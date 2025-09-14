@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Study Bud - AI-powered learning companion">
+    <meta name="theme-color" content="#3b82f6">
+
+    <title>Study Bud - AI Learning Companion</title>
+
+    <!-- Favicon (you can replace these with actual favicon files) -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+
+    <!-- Open Graph meta tags for social sharing -->
+    <meta property="og:title" content="Study Bud - AI Learning Companion">
+    <meta property="og:description"
+        content="Enhance your learning with AI-powered study tools, personalized study plans, and intelligent resource recommendations.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://studybud-api.herokuapp.com">
+    <meta property="og:image" content="/static/og-image.png">
+
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Study Bud - AI Learning Companion">
+    <meta name="twitter:description" content="Enhance your learning with AI-powered study tools">
+    <meta name="twitter:image" content="/static/twitter-card.png">
+
+    <!-- Preconnect to external domains for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS will be injected here by Vite in production -->
+    <!-- In development, Vite dev server will serve the assets -->
+
+    <style>
+        /* Loading styles to show while React app loads */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            font-family: 'Inter', sans-serif;
+            color: white;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-left: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .loading-subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* Hide loading screen once React app loads */
+        body.loaded #loading-screen {
+            display: none;
+        }
+
+        /* Ensure the root element takes full height */
+        html,
+        body,
+        #root {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Basic reset and font setup */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Loading screen shown while React app initializes -->
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <div class="loading-text">Study Bud</div>
+        <div class="loading-subtitle">Loading your AI learning companion...</div>
+    </div>
+
+    <!-- React app will be mounted here -->
+    <div id="root"></div>
+
+    <!-- Fallback content for when JavaScript is disabled -->
+    <noscript>
+        <div style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Inter', sans-serif;
+            text-align: center;
+            padding: 20px;
+        ">
+            <h1 style="color: #1e293b; margin-bottom: 16px;">Study Bud</h1>
+            <p style="color: #64748b; margin-bottom: 24px; max-width: 400px;">
+                Study Bud requires JavaScript to run. Please enable JavaScript in your browser to access the
+                application.
+            </p>
+            <a href="/api/" style="
+                background: #3b82f6;
+                color: white;
+                padding: 12px 24px;
+                text-decoration: none;
+                border-radius: 8px;
+                font-weight: 500;
+            ">
+                Access API Documentation
+            </a>
+        </div>
+    </noscript>
+
+    <!-- Global configuration for React app -->
+    <script>
+        // Global configuration that React can access
+        window.STUDY_BUD_CONFIG = {
+            API_BASE_URL: '{{ request.scheme }}://{{ request.get_host }}/api',
+            APP_NAME: 'Study Bud',
+            APP_VERSION: '1.0.0',
+            ENVIRONMENT: '{% if debug %}development{% else %}production{% endif %}',
+            FEATURES: {
+                AI_ASSISTANT: true,
+                SEMANTIC_SEARCH: {% if use_vector_search %}true{% else %}false{% endif %},
+        OFFLINE_SUPPORT: false
+            }
+        };
+
+        // Remove loading screen once React app has loaded
+        window.addEventListener('load', function () {
+            setTimeout(function () {
+                document.body.classList.add('loaded');
+            }, 500);
+        });
+
+        // Error handling for React app loading
+        window.addEventListener('error', function (e) {
+            console.error('Study Bud loading error:', e);
+            document.getElementById('loading-screen').innerHTML = `
+                <div style="text-align: center;">
+                    <h2 style="color: white; margin-bottom: 16px;">Loading Error</h2>
+                    <p style="color: rgba(255,255,255,0.8); margin-bottom: 20px;">
+                        There was an error loading Study Bud. Please refresh the page.
+                    </p>
+                    <button onclick="window.location.reload()" style="
+                        background: rgba(255,255,255,0.2);
+                        color: white;
+                        border: 1px solid rgba(255,255,255,0.3);
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 500;
+                    ">
+                        Refresh Page
+                    </button>
+                </div>
+            `;
+        });
+    </script>
+
+    <!-- Vite/React app entry point will be injected here in production -->
+    <!-- In development, this will be served by Vite dev server at localhost:5173 -->
+
+    <!-- Performance and analytics scripts can be added here -->
+
+    <!-- Service Worker registration for PWA functionality (future) -->
+    <script>
+        if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function (registration) {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(function (registrationError) {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+
+</html>

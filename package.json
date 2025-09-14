@@ -1,0 +1,11 @@
+{
+    "name": "study-bud",
+    "private": true,
+    "scripts": {
+      "build": "cd frontend && npm install && npm run build",
+      "heroku-postbuild": "npm run build"
+    },
+    "engines": {
+      "node": "18.x"
+    }
+  }
