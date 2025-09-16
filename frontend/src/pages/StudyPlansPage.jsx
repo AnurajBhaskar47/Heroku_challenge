@@ -353,6 +353,7 @@ const StudyPlansPage = () => {
                 onComplete={handleCompletePlan}
                 onSetDraft={handleSetDraft}
                 onSetActive={handleSetActive}
+                onTopicUpdate={loadStudyPlans}
             />
         </div>
     );

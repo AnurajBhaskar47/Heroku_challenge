@@ -18,6 +18,7 @@ const StudyPlanDetailModal = ({
     onComplete,
     onSetDraft,
     onSetActive,
+    onTopicUpdate,
 }) => {
     const [studyPlan, setStudyPlan] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -96,24 +97,31 @@ const StudyPlanDetailModal = ({
         if (!studyPlan) return;
 
         const isCurrentlyCompleted = completedTopics.has(topicId);
-        const newCompletedTopics = new Set(completedTopics);
+        const newCompleted = !isCurrentlyCompleted;
         
-        if (isCurrentlyCompleted) {
-            newCompletedTopics.delete(topicId);
-        } else {
-            newCompletedTopics.add(topicId);
-        }
-        
-        setCompletedTopics(newCompletedTopics);
-
-        // Update progress based on completed topics
-        const totalTopics = studyPlan.plan_data.topics?.length || 0;
-        if (totalTopics > 0) {
-            const completedCount = newCompletedTopics.size;
-            const newProgress = Math.round((completedCount / totalTopics) * 100);
-            await onUpdateProgress(studyPlanId, newProgress);
-            // Reload to get updated data
+        try {
+            // Update completion status via API
+            await plansService.updateTopicCompletion(studyPlanId, topicId, newCompleted);
+            
+            // Update local state
+            const newCompletedTopics = new Set(completedTopics);
+            if (newCompleted) {
+                newCompletedTopics.add(topicId);
+            } else {
+                newCompletedTopics.delete(topicId);
+            }
+            setCompletedTopics(newCompletedTopics);
+            
+            // Reload to get updated data from server
             loadStudyPlan();
+            
+            // Notify parent component to refresh its data
+            if (onTopicUpdate) {
+                onTopicUpdate();
+            }
+        } catch (error) {
+            console.error('Failed to update topic completion:', error);
+            // You could show a toast notification here
         }
     };
 
@@ -172,7 +180,7 @@ const StudyPlanDetailModal = ({
             isOpen={isOpen}
             onClose={onClose}
             title={studyPlan.title}
-            size="large"
+            size="lg"
             actions={
                 <div className="flex gap-3">
                     <Button variant="outline" onClick={onClose}>
@@ -368,7 +376,7 @@ const StudyPlanDetailModal = ({
                                                             ? 'bg-green-500 border-green-500 text-white'
                                                             : 'border-gray-300 hover:border-green-400'
                                                     }`}
-                                                    disabled={studyPlan.status !== 'active'}
+                                                    disabled={!['active', 'completed'].includes(studyPlan.status)}
                                                 >
                                                     {completedTopics.has(topic.id) && (
                                                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -434,7 +442,7 @@ const StudyPlanDetailModal = ({
                                                             ? 'bg-blue-500 border-blue-500 text-white'
                                                             : 'border-gray-300 hover:border-blue-400'
                                                     }`}
-                                                    disabled={studyPlan.status !== 'active'}
+                                                    disabled={!['active', 'completed'].includes(studyPlan.status)}
                                                 >
                                                     {completedMilestones.has(milestone.id) && (
                                                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">

@@ -178,6 +178,74 @@ class StudyPlanViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @extend_schema(
+        summary="Update topic completion status",
+        description="Mark a specific topic as completed or incomplete and update overall progress.",
+        request={"topic_id": "string", "completed": "boolean"},
+        responses={200: StudyPlanSerializer}
+    )
+    @action(detail=True, methods=['post'], url_path='update-topic')
+    def update_topic_completion(self, request, pk=None):
+        """Update topic completion status and recalculate progress."""
+        study_plan = self.get_object()
+        topic_id = request.data.get('topic_id')
+        completed = request.data.get('completed')
+
+        if topic_id is None or completed is None:
+            return Response(
+                {'error': 'topic_id and completed are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not isinstance(completed, bool):
+            return Response(
+                {'error': 'completed must be a boolean'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update topic completion in plan_data
+        if not study_plan.plan_data or 'topics' not in study_plan.plan_data:
+            return Response(
+                {'error': 'Study plan has no topics'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        topics = study_plan.plan_data.get('topics', [])
+        topic_found = False
+        
+        for topic in topics:
+            if str(topic.get('id')) == str(topic_id):
+                topic['completed'] = completed
+                topic_found = True
+                break
+
+        if not topic_found:
+            return Response(
+                {'error': 'Topic not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Recalculate progress based on completed topics
+        total_topics = len(topics)
+        completed_topics = sum(1 for topic in topics if topic.get('completed', False))
+        new_progress = (completed_topics / total_topics * 100) if total_topics > 0 else 0
+
+        # Update status based on progress changes
+        if new_progress == 100 and study_plan.status != 'completed':
+            # All topics completed - set to completed
+            study_plan.status = 'completed'
+        elif new_progress < 100 and study_plan.status == 'completed':
+            # Progress dropped below 100% from completed state - set back to active
+            study_plan.status = 'active'
+
+        # Update the plan data and progress
+        study_plan.plan_data = study_plan.plan_data  # Mark as changed
+        study_plan.progress_percentage = new_progress
+        study_plan.save(manual_status_update=True)  # Use manual flag to avoid auto-status logic
+
+        serializer = self.get_serializer(study_plan)
+        return Response(serializer.data)
+
+    @extend_schema(
         summary="Activate study plan",
         description="Change study plan status to active.",
         responses={200: StudyPlanSerializer}

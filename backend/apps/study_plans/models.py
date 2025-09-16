@@ -162,6 +162,10 @@ class StudyPlan(models.Model):
             if new_progress == 100 and self.status != 'completed':
                 self.status = 'completed'
                 self.save(manual_status_update=True)  # This is a legitimate auto-completion
+            elif new_progress < 100 and self.status == 'completed':
+                # Progress dropped below 100% from completed state - set back to active
+                self.status = 'active'
+                self.save(manual_status_update=True)  # This is a legitimate status reversion
             else:
                 self.save()
 

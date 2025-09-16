@@ -142,5 +142,20 @@ export const plansService = {
         const response = await api.post(`/study-plans/${planId}/duplicate/`);
         return response.data;
     },
+
+    /**
+     * Update topic completion status
+     * @param {number} planId
+     * @param {string} topicId
+     * @param {boolean} completed
+     * @returns {Promise<StudyPlan>}
+     */
+    async updateTopicCompletion(planId, topicId, completed) {
+        const response = await api.post(`/study-plans/${planId}/update-topic/`, {
+            topic_id: topicId,
+            completed: completed,
+        });
+        return response.data;
+    },
       
 };
