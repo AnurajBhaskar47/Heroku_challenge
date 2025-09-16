@@ -85,14 +85,14 @@ class StudyPlan(models.Model):
         help_text="Structured study plan data (topics, schedule, milestones)"
     )
 
-    # Vector Search Support (pgvector-ready)
-    plan_embedding = ArrayField(
-        models.FloatField(),
-        size=1536,  # Standard embedding size for many models
-        null=True,
-        blank=True,
-        help_text="Vector embedding for semantic search (pgvector-ready)"
-    )
+    # Vector Search Support (pgvector-ready) - Disabled for SQLite
+    # plan_embedding = ArrayField(
+    #     models.FloatField(),
+    #     size=1536,  # Standard embedding size for many models
+    #     null=True,
+    #     blank=True,
+    #     help_text="Vector embedding for semantic search (pgvector-ready)"
+    # )
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -161,8 +161,9 @@ class StudyPlan(models.Model):
             # Auto-complete if progress reaches 100%
             if new_progress == 100 and self.status != 'completed':
                 self.status = 'completed'
-
-            self.save()
+                self.save(manual_status_update=True)  # This is a legitimate auto-completion
+            else:
+                self.save()
 
     def get_plan_summary(self):
         """Get a summary of the plan data."""
@@ -207,9 +208,13 @@ class StudyPlan(models.Model):
         # Auto-set status based on dates and progress
         today = timezone.now().date()
 
+        # Check if this is a manual status update (e.g., from activate/pause actions)
+        manual_status_update = kwargs.pop('manual_status_update', False)
+
         if self.status == 'draft':
             pass  # Keep as draft until manually activated
-        elif self.progress_percentage == 100:
+        elif not manual_status_update and self.progress_percentage == 100 and self.status not in ['completed']:
+            # Only auto-complete if it's not a manual status change and not already completed
             self.status = 'completed'
         elif self.end_date < today and self.status not in ['completed', 'cancelled']:
             self.status = 'paused'  # Could be considered overdue

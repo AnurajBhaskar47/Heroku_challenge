@@ -20,13 +20,11 @@ const CourseCard = ({ course, onEdit, onDelete }) => {
 
     const handleEdit = (e) => {
         e.stopPropagation();
-        console.log('Edit clicked for course:', course.name);
         onEdit(course);
     };
 
     const handleDelete = (e) => {
         e.stopPropagation();
-        console.log('Delete clicked for course:', course.name);
         setIsDeleteConfirmOpen(true);
     };
 

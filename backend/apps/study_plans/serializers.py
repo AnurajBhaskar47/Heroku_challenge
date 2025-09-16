@@ -116,7 +116,6 @@ class StudyPlanCreateSerializer(StudyPlanSerializer):
         course = Course.objects.get(id=course_id)
         study_plan = StudyPlan.objects.create(
             course=course,
-            user=self.context['request'].user,
             **validated_data
         )
         return study_plan

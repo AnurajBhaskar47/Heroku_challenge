@@ -20,13 +20,11 @@ const CoursesPage = () => {
     };
 
     const handleEditCourse = (course) => {
-        console.log('CoursesPage: Edit course called for:', course.name);
         setEditingCourse(course);
         setIsModalOpen(true);
     };
 
     const handleDeleteCourse = async (courseId) => {
-        console.log('CoursesPage: Delete course called for ID:', courseId);
         return await deleteCourse(courseId);
     };
 

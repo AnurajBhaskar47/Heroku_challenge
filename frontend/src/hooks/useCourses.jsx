@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { coursesService } from '../services/courses.js';
 import { getErrorMessage } from '../services/api.js';
 
@@ -11,9 +11,9 @@ export const useCourses = () => {
     const [error, setError] = useState(null);
 
     /**
-     * Fetch all courses
+     * Load all courses
      */
-    const fetchCourses = async () => {
+    const loadCourses = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -24,7 +24,7 @@ export const useCourses = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     /**
      * Create a new course
@@ -158,14 +158,14 @@ export const useCourses = () => {
 
     // Auto-fetch courses on mount
     useEffect(() => {
-        fetchCourses();
+        loadCourses();
     }, []);
 
     return {
         courses,
         loading,
         error,
-        fetchCourses,
+        loadCourses,
         createCourse,
         updateCourse,
         deleteCourse,

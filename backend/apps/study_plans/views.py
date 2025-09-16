@@ -68,6 +68,19 @@ class StudyPlanViewSet(viewsets.ModelViewSet):
         """Set the study plan owner to the current user."""
         serializer.save(user=self.request.user)
 
+    def perform_update(self, serializer):
+        """Handle manual status updates."""
+        # Check if status is being updated in the request data
+        is_status_update = 'status' in self.request.data
+        
+        if is_status_update:
+            # Save with manual status update flag to bypass auto-completion logic
+            instance = serializer.save(manual_status_update=True)
+        else:
+            instance = serializer.save()
+        
+        return instance
+
     @extend_schema(
         summary="Get study plan statistics",
         description="Get statistics about user's study plans.",
@@ -174,7 +187,7 @@ class StudyPlanViewSet(viewsets.ModelViewSet):
         """Activate a study plan."""
         study_plan = self.get_object()
         study_plan.status = 'active'
-        study_plan.save()
+        study_plan.save(manual_status_update=True)
 
         serializer = self.get_serializer(study_plan)
         return Response(serializer.data)
@@ -189,7 +202,7 @@ class StudyPlanViewSet(viewsets.ModelViewSet):
         """Pause a study plan."""
         study_plan = self.get_object()
         study_plan.status = 'paused'
-        study_plan.save()
+        study_plan.save(manual_status_update=True)
 
         serializer = self.get_serializer(study_plan)
         return Response(serializer.data)
@@ -205,7 +218,7 @@ class StudyPlanViewSet(viewsets.ModelViewSet):
         study_plan = self.get_object()
         study_plan.status = 'completed'
         study_plan.progress_percentage = 100
-        study_plan.save()
+        study_plan.save(manual_status_update=True)
 
         serializer = self.get_serializer(study_plan)
         return Response(serializer.data)

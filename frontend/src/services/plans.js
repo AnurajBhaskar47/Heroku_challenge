@@ -84,5 +84,63 @@ export const plansService = {
     async activatePlan(planId) {
         const response = await api.post(`/study-plans/${planId}/activate/`);
         return response.data;
-    },      
+    },
+
+    /**
+     * Get study plan statistics
+     * @returns {Promise<Object>}
+     */
+    async getStats() {
+        const response = await api.get('/study-plans/stats/');
+        return response.data;
+    },
+
+    /**
+     * Get active study plans
+     * @returns {Promise<StudyPlan[]>}
+     */
+    async getActivePlans() {
+        const response = await api.get('/study-plans/active/');
+        return response.data;
+    },
+
+    /**
+     * Get overdue study plans
+     * @returns {Promise<StudyPlan[]>}
+     */
+    async getOverduePlans() {
+        const response = await api.get('/study-plans/overdue/');
+        return response.data;
+    },
+
+    /**
+     * Pause study plan
+     * @param {number} planId
+     * @returns {Promise<StudyPlan>}
+     */
+    async pausePlan(planId) {
+        const response = await api.post(`/study-plans/${planId}/pause/`);
+        return response.data;
+    },
+
+    /**
+     * Complete study plan
+     * @param {number} planId
+     * @returns {Promise<StudyPlan>}
+     */
+    async completePlan(planId) {
+        const response = await api.post(`/study-plans/${planId}/complete/`);
+        return response.data;
+    },
+
+    /**
+     * Duplicate study plan
+     * @param {number} planId
+     * @returns {Promise<StudyPlan>}
+     */
+    async duplicatePlan(planId) {
+        const response = await api.post(`/study-plans/${planId}/duplicate/`);
+        return response.data;
+    },
+      
 };

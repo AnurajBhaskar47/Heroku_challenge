@@ -22,10 +22,10 @@ const DropdownMenu = ({ items, className = '', trigger = null }) => {
         };
     }, []);
 
-    const handleItemClick = (item) => {
+    const handleItemClick = (item, event) => {
         setIsOpen(false);
         if (item.onClick) {
-            item.onClick();
+            item.onClick(event);
         }
     };
 
@@ -57,7 +57,7 @@ const DropdownMenu = ({ items, className = '', trigger = null }) => {
                                 key={index}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    handleItemClick(item);
+                                    handleItemClick(item, e);
                                 }}
                                 className={`${item.className || 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                                     } group flex items-center px-4 py-2 text-sm w-full text-left transition-colors`}
