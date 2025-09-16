@@ -377,3 +377,5 @@ class RAGQuery(models.Model):
         return f"Query by {self.user.username}: {self.query_text[:50]}..."
 
 
+
+

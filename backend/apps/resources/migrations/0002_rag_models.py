@@ -258,36 +258,7 @@ class Migration(migrations.Migration):
             ),
         ),
         
-        # Create indexes for optimal pgvector performance
-        migrations.RunSQL(
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS document_chunk_embedding_cosine_idx 
-            ON resources_document_chunk 
-            USING ivfflat (embedding vector_cosine_ops) 
-            WITH (lists = 1000);
-            """,
-            reverse_sql="DROP INDEX IF EXISTS document_chunk_embedding_cosine_idx;"
-        ),
-        
-        migrations.RunSQL(
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS study_plan_context_embedding_cosine_idx 
-            ON resources_study_plan_context 
-            USING ivfflat (context_embedding vector_cosine_ops) 
-            WITH (lists = 100);
-            """,
-            reverse_sql="DROP INDEX IF EXISTS study_plan_context_embedding_cosine_idx;"
-        ),
-        
-        migrations.RunSQL(
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS knowledge_graph_embedding_cosine_idx 
-            ON resources_knowledge_graph 
-            USING ivfflat (topic_embedding vector_cosine_ops) 
-            WITH (lists = 100);
-            """,
-            reverse_sql="DROP INDEX IF EXISTS knowledge_graph_embedding_cosine_idx;"
-        ),
+        # Note: Concurrent indexes will be created in a separate migration
         
         # Add regular indexes for filtering
         migrations.AddIndex(
@@ -311,5 +282,7 @@ class Migration(migrations.Migration):
             index=models.Index(fields=['course'], name='resources_knowledgegraph_course_idx'),
         ),
     ]
+
+
 
 
