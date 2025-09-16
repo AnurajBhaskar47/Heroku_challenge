@@ -25,11 +25,93 @@ const StudyPlanDetailModal = ({
     const [error, setError] = useState(null);
     const [completedTopics, setCompletedTopics] = useState(new Set());
     const [completedMilestones, setCompletedMilestones] = useState(new Set());
+    const [updatingTopics, setUpdatingTopics] = useState(new Set());
+    
+    // Smooth genie-like animation states
+    const [animatingProgress, setAnimatingProgress] = useState(false);
+    const [displayProgress, setDisplayProgress] = useState(0);
+    const [animatingElements, setAnimatingElements] = useState({
+        progressBar: false,
+        statusBadge: false,
+        summary: false
+    });
+
+    // Smooth progress animation with macOS-style elastic easing
+    const animateProgress = (fromProgress, toProgress, duration = 800) => {
+        if (fromProgress === toProgress) return;
+        
+        setAnimatingProgress(true);
+        const startTime = performance.now();
+        const difference = toProgress - fromProgress;
+        
+        const animate = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // macOS-style elastic easing (similar to genie effect)
+            let easedProgress;
+            if (progress < 0.6) {
+                // Smooth acceleration 
+                easedProgress = progress * progress * (3 - 2 * progress);
+            } else {
+                // Gentle elastic overshoot and settle
+                const t = (progress - 0.6) / 0.4;
+                const elastic = 0.04 * Math.sin(t * Math.PI * 3) * (1 - t);
+                easedProgress = progress + elastic;
+            }
+            
+            const currentValue = fromProgress + (difference * Math.max(0, Math.min(1, easedProgress)));
+            setDisplayProgress(Math.round(currentValue));
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                setDisplayProgress(toProgress);
+                setAnimatingProgress(false);
+            }
+        };
+        
+        requestAnimationFrame(animate);
+    };
+
+    // Trigger cascading genie-like animations
+    const triggerGenieAnimation = (newProgress) => {
+        // Phase 1: Progress bar morphs from center (genie effect)
+        setAnimatingElements(prev => ({ ...prev, progressBar: true }));
+        
+        setTimeout(() => {
+            // Phase 2: Status badge gentle scale
+            setAnimatingElements(prev => ({ ...prev, statusBadge: true }));
+        }, 150);
+        
+        setTimeout(() => {
+            // Phase 3: Summary section smooth transition
+            setAnimatingElements(prev => ({ ...prev, summary: true }));
+        }, 300);
+        
+        setTimeout(() => {
+            // Reset all animations
+            setAnimatingElements({
+                progressBar: false,
+                statusBadge: false,
+                summary: false
+            });
+        }, 1000);
+    };
 
     // Load study plan details
     useEffect(() => {
         if (isOpen && studyPlanId) {
             loadStudyPlan();
+        } else if (!isOpen) {
+            // Clear states when modal is closed
+            setUpdatingTopics(new Set());
+            setAnimatingProgress(false);
+            setAnimatingElements({
+                progressBar: false,
+                statusBadge: false,
+                summary: false
+            });
         }
     }, [isOpen, studyPlanId]);
 
@@ -37,8 +119,13 @@ const StudyPlanDetailModal = ({
         try {
             setLoading(true);
             setError(null);
+            setUpdatingTopics(new Set()); // Clear any pending updates
+            
             const plan = await plansService.getPlan(studyPlanId);
             setStudyPlan(plan);
+            
+            // Initialize display progress for smooth animations
+            setDisplayProgress(Math.round(plan.progress_percentage || 0));
             
             // Initialize completed items
             if (plan.plan_data) {
@@ -92,28 +179,61 @@ const StudyPlanDetailModal = ({
         return statusMap[status] || 'bg-gray-100 text-gray-800';
     };
 
-    // Toggle topic completion
+    // Toggle topic completion with smooth genie animation
     const toggleTopicCompletion = async (topicId) => {
-        if (!studyPlan) return;
+        if (!studyPlan || updatingTopics.has(topicId) || animatingProgress) return;
 
         const isCurrentlyCompleted = completedTopics.has(topicId);
         const newCompleted = !isCurrentlyCompleted;
         
+        // Mark topic as updating for loading state
+        setUpdatingTopics(prev => new Set([...prev, topicId]));
+        
+        // Immediately update checkbox state for instant feedback
+        const newCompletedTopics = new Set(completedTopics);
+        if (newCompleted) {
+            newCompletedTopics.add(topicId);
+        } else {
+            newCompletedTopics.delete(topicId);
+        }
+        setCompletedTopics(newCompletedTopics);
+
+        // Calculate new progress
+        const totalTopics = studyPlan.plan_data.topics?.length || 0;
+        const newProgress = totalTopics > 0 ? Math.round((newCompletedTopics.size / totalTopics) * 100) : 0;
+        const oldProgress = displayProgress;
+        
+        // Only animate if progress actually changes
+        if (newProgress !== oldProgress) {
+            // Start smooth genie animation
+            animateProgress(oldProgress, newProgress);
+            triggerGenieAnimation(newProgress);
+        }
+        
+        // Update study plan state for status changes
+        const updatedStudyPlan = {
+            ...studyPlan,
+            progress_percentage: newProgress,
+            status: newProgress === 100 ? 'completed' : 
+                   (studyPlan.status === 'completed' && newProgress < 100) ? 'active' : 
+                   studyPlan.status
+        };
+        setStudyPlan(updatedStudyPlan);
+        
         try {
             // Update completion status via API
-            await plansService.updateTopicCompletion(studyPlanId, topicId, newCompleted);
+            const response = await plansService.updateTopicCompletion(studyPlanId, topicId, newCompleted);
             
-            // Update local state
-            const newCompletedTopics = new Set(completedTopics);
-            if (newCompleted) {
-                newCompletedTopics.add(topicId);
-            } else {
-                newCompletedTopics.delete(topicId);
+            // Update with server response to ensure consistency
+            setStudyPlan(response);
+            
+            // Sync completed topics with server response
+            if (response.plan_data?.topics) {
+                const serverCompletedTopics = new Set(
+                    response.plan_data.topics.filter(t => t.completed).map(t => t.id)
+                );
+                setCompletedTopics(serverCompletedTopics);
             }
-            setCompletedTopics(newCompletedTopics);
-            
-            // Reload to get updated data from server
-            loadStudyPlan();
             
             // Notify parent component to refresh its data
             if (onTopicUpdate) {
@@ -121,7 +241,27 @@ const StudyPlanDetailModal = ({
             }
         } catch (error) {
             console.error('Failed to update topic completion:', error);
-            // You could show a toast notification here
+            
+            // Revert all changes on error
+            setCompletedTopics(completedTopics);
+            setStudyPlan(studyPlan);
+            setDisplayProgress(oldProgress);
+            setAnimatingProgress(false);
+            setAnimatingElements({
+                progressBar: false,
+                statusBadge: false,
+                summary: false
+            });
+            
+            // Reload data to ensure consistency
+            loadStudyPlan();
+        } finally {
+            // Remove topic from updating state
+            setUpdatingTopics(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(topicId);
+                return newSet;
+            });
         }
     };
 
@@ -235,7 +375,11 @@ const StudyPlanDetailModal = ({
                     <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
-                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(studyPlan.status)}`}>
+                                <span className={`px-2 py-1 text-xs font-medium rounded-full transition-all duration-300 transform ${getStatusBadge(studyPlan.status)} ${
+                                    animatingElements.statusBadge ? 'scale-110 shadow-lg ring-2 ring-opacity-20 ring-blue-400' : 'scale-100'
+                                }`} style={{
+                                    transition: 'all 400ms cubic-bezier(0.34, 1.56, 0.64, 1)'
+                                }}>
                                     {studyPlan.status.charAt(0).toUpperCase() + studyPlan.status.slice(1)}
                                 </span>
                                 {studyPlan.is_overdue && (
@@ -262,9 +406,20 @@ const StudyPlanDetailModal = ({
 
                     {/* Progress Overview */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
+                        <div className={`transition-all duration-500 transform ${
+                            animatingProgress ? 'scale-105 bg-blue-50 rounded-lg p-2 -m-2 shadow-md' : 'scale-100'
+                        }`} style={{
+                            transition: 'all 500ms cubic-bezier(0.34, 1.56, 0.64, 1)'
+                        }}>
                             <span className="block text-gray-500">Progress</span>
-                            <span className="text-lg font-semibold">{Math.round(studyPlan.progress_percentage)}%</span>
+                            <span className={`text-lg font-semibold transition-all duration-500 transform ${
+                                animatingProgress ? 'text-blue-600 scale-110' : 'text-gray-900 scale-100'
+                            }`} style={{
+                                transition: 'all 500ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                                display: 'inline-block'
+                            }}>
+                                {displayProgress}%
+                            </span>
                         </div>
                         <div>
                             <span className="block text-gray-500">Duration</span>
@@ -293,23 +448,42 @@ const StudyPlanDetailModal = ({
                         </div>
                     </div>
 
-                    {/* Progress Bars */}
-                    <div className="space-y-3 mt-4">
+                    {/* Progress Bars - Genie Effect */}
+                    <div className={`space-y-3 mt-4 transition-all duration-600 transform ${
+                        animatingElements.progressBar ? 'scale-105' : 'scale-100'
+                    }`} style={{
+                        transition: 'transform 600ms cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    }}>
                         <div>
                             <div className="flex items-center justify-between text-sm mb-1">
                                 <span className="text-gray-600">Study Progress</span>
-                                <span className="font-medium">{Math.round(studyPlan.progress_percentage)}%</span>
+                                <span className={`font-medium transition-all duration-500 transform ${
+                                    animatingElements.progressBar ? 'text-blue-600 font-bold scale-110' : 'text-gray-900 scale-100'
+                                }`} style={{
+                                    transition: 'all 500ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                                    display: 'inline-block'
+                                }}>
+                                    {displayProgress}%
+                                </span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className={`w-full bg-gray-200 rounded-full transition-all duration-400 ${
+                                animatingElements.progressBar ? 'h-3 shadow-lg ring-2 ring-blue-200 ring-opacity-30' : 'h-2'
+                            }`} style={{
+                                transition: 'height 400ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 400ms ease-out, ring 300ms ease-out'
+                            }}>
                                 <div
-                                    className={`h-2 rounded-full transition-all duration-300 ${
+                                    className={`rounded-full transition-all transform origin-left ${
                                         studyPlan.progress_percentage === 100
-                                            ? 'bg-green-500'
+                                            ? 'bg-green-500 shadow-green-200'
                                             : studyPlan.is_overdue
-                                            ? 'bg-red-500'
-                                            : 'bg-blue-500'
-                                    }`}
-                                    style={{ width: `${studyPlan.progress_percentage}%` }}
+                                            ? 'bg-red-500 shadow-red-200'
+                                            : 'bg-blue-500 shadow-blue-200'
+                                    } ${animatingElements.progressBar ? 'h-3 shadow-lg scale-y-110' : 'h-2 scale-y-100'}`}
+                                    style={{ 
+                                        width: `${displayProgress}%`,
+                                        transition: 'width 800ms cubic-bezier(0.34, 1.56, 0.64, 1), height 400ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 300ms ease-out, transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 400ms ease-out',
+                                        transformOrigin: 'left center'
+                                    }}
                                 />
                             </div>
                         </div>
@@ -372,17 +546,21 @@ const StudyPlanDetailModal = ({
                                                 <button
                                                     onClick={() => toggleTopicCompletion(topic.id)}
                                                     className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                                                        completedTopics.has(topic.id)
+                                                        updatingTopics.has(topic.id)
+                                                            ? 'bg-gray-200 border-gray-300'
+                                                            : completedTopics.has(topic.id)
                                                             ? 'bg-green-500 border-green-500 text-white'
                                                             : 'border-gray-300 hover:border-green-400'
                                                     }`}
-                                                    disabled={!['active', 'completed'].includes(studyPlan.status)}
+                                                    disabled={!['active', 'completed'].includes(studyPlan.status) || updatingTopics.has(topic.id)}
                                                 >
-                                                    {completedTopics.has(topic.id) && (
+                                                    {updatingTopics.has(topic.id) ? (
+                                                        <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                                                    ) : completedTopics.has(topic.id) ? (
                                                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                                         </svg>
-                                                    )}
+                                                    ) : null}
                                                 </button>
                                                 <h4 className={`font-medium ${completedTopics.has(topic.id) ? 'line-through text-green-700' : ''}`}>
                                                     {topic.title || `Topic ${index + 1}`}
@@ -411,10 +589,25 @@ const StudyPlanDetailModal = ({
                             ))}
                         </div>
                         
-                        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                            <div className="text-sm text-gray-600">
+                        <div className={`mt-4 p-3 rounded-lg transition-all duration-700 transform ${
+                            animatingElements.summary ? 'scale-105 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-lg ring-2 ring-blue-200 ring-opacity-40' : 'bg-gray-50 scale-100'
+                        }`} style={{
+                            transition: 'all 700ms cubic-bezier(0.34, 1.56, 0.64, 1)'
+                        }}>
+                            <div className={`text-sm transition-all duration-600 ${
+                                animatingElements.summary ? 'text-blue-700 font-bold' : 'text-gray-600'
+                            }`} style={{
+                                transition: 'all 600ms cubic-bezier(0.34, 1.56, 0.64, 1)'
+                            }}>
                                 <strong>Topics Progress:</strong> {completedTopics.size} of {studyPlan.plan_data.topics.length} completed
-                                ({Math.round((completedTopics.size / studyPlan.plan_data.topics.length) * 100)}%)
+                                (<span className={`transition-all duration-700 transform ${
+                                    animatingElements.summary ? 'text-blue-800 font-black scale-110' : 'scale-100'
+                                }`} style={{
+                                    transition: 'all 700ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                                    display: 'inline-block'
+                                }}>
+                                    {Math.round((completedTopics.size / studyPlan.plan_data.topics.length) * 100)}%
+                                </span>)
                             </div>
                         </div>
                     </div>
