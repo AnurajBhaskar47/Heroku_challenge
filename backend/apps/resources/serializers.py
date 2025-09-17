@@ -25,12 +25,12 @@ class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource
         fields = [
-            'id', 'title', 'description', 'url', 'resource_type',
+            'id', 'title', 'description', 'url', 'file', 'resource_type',
             'subject', 'topics', 'topics_list', 'difficulty_level',
             'difficulty_display', 'estimated_time', 'rating',
             'display_rating', 'view_count', 'is_verified',
             'added_by_user', 'added_by_username', 'is_external_resource',
-            'created_at', 'updated_at'
+            'course', 'created_at', 'updated_at'
         ]
         read_only_fields = [
             'view_count', 'rating', 'created_at', 'updated_at', 'embedding'
@@ -216,3 +216,119 @@ class ResourceRecommendationSerializer(serializers.Serializer):
         max_value=20,
         default=5
     )
+
+
+# === RAG-Powered AI Serializers ===
+
+class AIStudyPlanRequestSerializer(serializers.Serializer):
+    """
+    Serializer for AI study plan generation requests.
+    """
+    course_id = serializers.IntegerField(
+        help_text="Course ID for which to generate the study plan"
+    )
+    query = serializers.CharField(
+        max_length=2000,
+        help_text="Natural language description of study goals and constraints"
+    )
+    preferences = serializers.JSONField(
+        required=False,
+        default=dict,
+        help_text="Study preferences including hours per day, difficulty progression, etc."
+    )
+
+
+class StudyTopicSerializer(serializers.Serializer):
+    """
+    Serializer for study topics within a study plan.
+    """
+    title = serializers.CharField(max_length=200)
+    description = serializers.CharField()
+    estimated_hours = serializers.DecimalField(max_digits=5, decimal_places=1)
+    difficulty_level = serializers.IntegerField(min_value=1, max_value=5)
+    prerequisites = serializers.ListField(
+        child=serializers.CharField(),
+        default=list
+    )
+    learning_objectives = serializers.ListField(
+        child=serializers.CharField(),
+        default=list
+    )
+    recommended_resources = serializers.ListField(
+        child=serializers.IntegerField(),
+        default=list,
+        help_text="List of resource IDs"
+    )
+    order = serializers.IntegerField(help_text="Topic order in the study plan")
+
+
+class AIStudyPlanResponseSerializer(serializers.Serializer):
+    """
+    Serializer for AI study plan generation responses.
+    """
+    success = serializers.BooleanField()
+    study_plan = serializers.JSONField(
+        help_text="Generated study plan structure"
+    )
+    course_id = serializers.IntegerField()
+    query = serializers.CharField()
+    generated_at = serializers.CharField()
+    rag_context_used = serializers.BooleanField(
+        help_text="Whether RAG context from resources was used"
+    )
+    error = serializers.CharField(required=False)
+    details = serializers.CharField(required=False)
+
+
+class AIQuestionRequestSerializer(serializers.Serializer):
+    """
+    Serializer for AI question requests.
+    """
+    question = serializers.CharField(
+        max_length=1000,
+        help_text="Question to ask the AI assistant"
+    )
+    course_id = serializers.IntegerField(
+        required=False,
+        help_text="Course ID for context (optional)"
+    )
+    context_type = serializers.ChoiceField(
+        choices=[
+            ('general', 'General Question'),
+            ('concept', 'Concept Explanation'),
+            ('homework', 'Homework Help'),
+            ('exam_prep', 'Exam Preparation'),
+            ('study_strategy', 'Study Strategy')
+        ],
+        default='general',
+        help_text="Type of question for better context retrieval"
+    )
+
+
+class SourceSerializer(serializers.Serializer):
+    """
+    Serializer for source references in AI responses.
+    """
+    resource_id = serializers.IntegerField()
+    resource_title = serializers.CharField()
+    chunk_text = serializers.CharField()
+    relevance_score = serializers.FloatField()
+    page_number = serializers.IntegerField(required=False)
+
+
+class AIQuestionResponseSerializer(serializers.Serializer):
+    """
+    Serializer for AI question responses.
+    """
+    answer = serializers.CharField()
+    sources = SourceSerializer(many=True)
+    confidence = serializers.FloatField(
+        help_text="Confidence score of the answer (0-1)"
+    )
+    question = serializers.CharField()
+    course_id = serializers.IntegerField(required=False)
+    context_type = serializers.CharField()
+    generated_at = serializers.CharField()
+    rag_context_used = serializers.BooleanField()
+    error = serializers.CharField(required=False)
+    details = serializers.CharField(required=False)

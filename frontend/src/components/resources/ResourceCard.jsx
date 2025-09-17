@@ -101,8 +101,13 @@ const ResourceCard = ({ resource, onView, onEdit, onDelete }) => {
             label: 'Open Resource',
             onClick: (e) => {
                 e.stopPropagation();
-                if (resource.file_url || resource.url) {
-                    window.open(resource.file_url || resource.url, '_blank');
+                console.log('Resource object:', resource); // Debug log
+                const resourceUrl = resource.file || resource.url;
+                console.log('Opening URL:', resourceUrl); // Debug log
+                if (resourceUrl) {
+                    window.open(resourceUrl, '_blank');
+                } else {
+                    console.log('No file or URL found for resource');
                 }
             },
             icon: (

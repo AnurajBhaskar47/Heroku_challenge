@@ -2,12 +2,16 @@
 Views for the resources app.
 """
 
+import logging
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Count, Avg, Q
 from django_filters.rest_framework import DjangoFilterBackend
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
+
+logger = logging.getLogger(__name__)
 
 from .models import Resource, ResourceRating, ResourceCollection
 from .serializers import (
@@ -18,7 +22,11 @@ from .serializers import (
     ResourceCollectionDetailSerializer,
     ResourceStatsSerializer,
     ResourceSearchSerializer,
-    SemanticSearchRequestSerializer
+    SemanticSearchRequestSerializer,
+    AIStudyPlanRequestSerializer,
+    AIStudyPlanResponseSerializer,
+    AIQuestionRequestSerializer,
+    AIQuestionResponseSerializer
 )
 
 
@@ -69,6 +77,28 @@ class ResourceViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return ResourceCreateSerializer
         return ResourceSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Create a new resource and process it through RAG pipeline if it's a file."""
+        response = super().create(request, *args, **kwargs)
+        
+        if response.status_code == 201:
+            # Get the created resource
+            resource = Resource.objects.get(id=response.data['id'])
+            
+            # Process through RAG pipeline if it's a file upload
+            if resource.file and resource.resource_type in ['pdf', 'docx', 'txt']:
+                try:
+                    from .rag_pipeline import RAGPipeline
+                    success = RAGPipeline.process_uploaded_resource(resource)
+                    if success:
+                        logger.info(f"Successfully processed resource {resource.id} through RAG pipeline")
+                    else:
+                        logger.warning(f"Failed to process resource {resource.id} through RAG pipeline")
+                except Exception as e:
+                    logger.error(f"Error processing resource {resource.id} through RAG: {str(e)}")
+        
+        return response
 
     def retrieve(self, request, *args, **kwargs):
         """Retrieve resource and increment view count."""
@@ -211,6 +241,159 @@ class ResourceViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(recommended, many=True)
         return Response(serializer.data)
+    
+    @extend_schema(
+        summary="Generate AI-powered study plan",
+        description="Generate a personalized study plan using RAG pipeline with uploaded resources.",
+        request=AIStudyPlanRequestSerializer,
+        responses={200: AIStudyPlanResponseSerializer}
+    )
+    @action(detail=False, methods=['post'], url_path='generate-study-plan')
+    def generate_study_plan(self, request):
+        """Generate AI-powered study plan using RAG with resource context."""
+        serializer = AIStudyPlanRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Import Course and StudyPlan models for exception handling
+        from apps.courses.models import Course
+        from apps.study_plans.models import StudyPlan
+        
+        try:
+            # Initialize RAG pipeline (import only when needed)
+            try:
+                from .rag_pipeline import RAGPipeline
+                rag_pipeline = RAGPipeline()
+            except ImportError as e:
+                logger.warning(f"RAG pipeline not available: {e}")
+                return Response(
+                    {
+                        'success': False,
+                        'error': 'AI features not available - missing dependencies',
+                        'details': 'Please install required AI packages (openai, pgvector)'
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            # Extract request data
+            course_id = serializer.validated_data['course_id']
+            query = serializer.validated_data['query']
+            preferences = serializer.validated_data.get('preferences', {})
+            
+            # Get course
+            course = Course.objects.get(id=course_id, user=request.user)
+            
+            # Generate study plan with RAG context
+            study_plan = rag_pipeline.generate_contextual_study_plan(
+                user=request.user,
+                course=course,
+                query=query,
+                preferences=preferences
+            )
+            
+            response_data = {
+                'success': True,
+                'study_plan': study_plan,
+                'course_id': course_id,
+                'query': query,
+                'generated_at': timezone.now().isoformat(),
+                'rag_context_used': True
+            }
+            
+            response_serializer = AIStudyPlanResponseSerializer(response_data)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Course not found or you do not have access to it'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Study plan generation failed: {str(e)}")
+            return Response(
+                {
+                    'success': False,
+                    'error': 'Failed to generate study plan',
+                    'details': str(e)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @extend_schema(
+        summary="Ask AI a question about course content",
+        description="Ask the AI assistant a question using RAG context from uploaded resources.",
+        request=AIQuestionRequestSerializer,
+        responses={200: AIQuestionResponseSerializer}
+    )
+    @action(detail=False, methods=['post'], url_path='ai-question')
+    def ai_question(self, request):
+        """Answer questions using RAG pipeline with resource context."""
+        serializer = AIQuestionRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Import Course model for exception handling
+        from apps.courses.models import Course
+        
+        try:
+            # Initialize RAG pipeline (import only when needed)
+            try:
+                from .rag_pipeline import RAGPipeline
+                rag_pipeline = RAGPipeline()
+            except ImportError as e:
+                logger.warning(f"RAG pipeline not available: {e}")
+                return Response(
+                    {
+                        'error': 'AI features not available - missing dependencies',
+                        'details': 'Please install required AI packages (openai, pgvector)'
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            # Extract request data
+            question = serializer.validated_data['question']
+            course_id = serializer.validated_data.get('course_id')
+            context_type = serializer.validated_data.get('context_type', 'general')
+            
+            # Get course if provided
+            course = None
+            if course_id:
+                course = Course.objects.get(id=course_id, user=request.user)
+            
+            # Get AI response with context
+            response = rag_pipeline.answer_question_with_context(
+                user=request.user,
+                question=question,
+                course=course,
+                context_type=context_type
+            )
+            
+            response_data = {
+                'answer': response['answer'],
+                'sources': response.get('sources', []),
+                'confidence': response.get('confidence', 0.8),
+                'question': question,
+                'course_id': course_id,
+                'context_type': context_type,
+                'generated_at': timezone.now().isoformat(),
+                'rag_context_used': True
+            }
+            
+            response_serializer = AIQuestionResponseSerializer(response_data)
+            return Response(response_serializer.data)
+            
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Course not found or you do not have access to it'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"AI question answering failed: {str(e)}")
+            return Response(
+                {
+                    'error': 'Failed to answer question',
+                    'details': str(e)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @extend_schema(
         summary="Rate a resource",

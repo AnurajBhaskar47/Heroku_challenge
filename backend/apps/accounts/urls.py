@@ -22,20 +22,16 @@ router.register(r'auth', AuthViewSet, basename='auth')
 router.register(r'profile', UserViewSet, basename='profile')
 
 # Register other app viewsets
-try:
-    from apps.study_plans.views import StudyPlanViewSet
-    from apps.resources.views import ResourceViewSet, ResourceCollectionViewSet
-    from apps.ai_assistant.views import AIAssistantViewSet
+from apps.study_plans.views import StudyPlanViewSet
+from apps.resources.views import ResourceViewSet, ResourceCollectionViewSet
+from apps.ai_assistant.views import AIAssistantViewSet
 
-    router.register(r'study-plans', StudyPlanViewSet, basename='studyplan')
-    router.register(r'resources', ResourceViewSet, basename='resource')
-    router.register(r'collections', ResourceCollectionViewSet,
-                    basename='collection')
-    router.register(r'ai-assistant', AIAssistantViewSet,
-                    basename='aiassistant')
-except ImportError:
-    # Apps may not be ready during initial setup
-    pass
+router.register(r'study-plans', StudyPlanViewSet, basename='studyplan')
+router.register(r'resources', ResourceViewSet, basename='resource')
+router.register(r'collections', ResourceCollectionViewSet,
+                basename='collection')
+router.register(r'ai-assistant', AIAssistantViewSet,
+                basename='aiassistant')
 
 urlpatterns = [
     # Health check

@@ -9,6 +9,8 @@ import ResourceUploadModal from '../components/resources/ResourceUploadModal';
 import AIStudyPlannerModal from '../components/resources/AIStudyPlannerModal';
 import ResourceCard from '../components/resources/ResourceCard';
 import ResourceDetailsModal from '../components/resources/ResourceDetailsModal';
+import ResourceEditModal from '../components/resources/ResourceEditModal';
+import DeleteResourceModal from '../components/resources/DeleteResourceModal';
 
 const ResourcesPage = () => {
     const navigate = useNavigate();
@@ -23,6 +25,8 @@ const ResourcesPage = () => {
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
     const [aiPlannerModalOpen, setAiPlannerModalOpen] = useState(false);
     const [viewResourceModalOpen, setViewResourceModalOpen] = useState(false);
+    const [editResourceModalOpen, setEditResourceModalOpen] = useState(false);
+    const [deleteResourceModalOpen, setDeleteResourceModalOpen] = useState(false);
     const [selectedResource, setSelectedResource] = useState(null);
 
     // Load data
@@ -57,15 +61,19 @@ const ResourcesPage = () => {
     const handleGenerateAIStudyPlan = async (planRequest) => {
         try {
             setLoading(true);
-            const studyPlan = await resourcesService.generateStudyPlan(planRequest);
+            const response = await resourcesService.generateStudyPlan(planRequest);
             
-            // Navigate to study plans with the new plan
-            navigate('/study-plans', { 
-                state: { 
-                    newPlan: studyPlan,
-                    message: 'AI-generated study plan created successfully!' 
-                }
-            });
+            if (response.success && response.study_plan) {
+                // Navigate to study plans with the new plan
+                navigate('/study-plans', { 
+                    state: { 
+                        newPlan: response.study_plan,
+                        message: 'RAG-powered AI study plan created successfully with context from your uploaded resources!' 
+                    }
+                });
+            } else {
+                throw new Error(response.error || 'Failed to generate study plan');
+            }
             
         } catch (err) {
             setError(err.message || 'Failed to generate study plan');
@@ -160,12 +168,12 @@ const ResourcesPage = () => {
                                     setViewResourceModalOpen(true);
                                 }}
                                 onEdit={(resource) => {
-                                    // TODO: Implement edit functionality
-                                    console.log('Edit resource:', resource);
+                                    setSelectedResource(resource);
+                                    setEditResourceModalOpen(true);
                                 }}
                                 onDelete={(resource) => {
-                                    // TODO: Implement delete functionality
-                                    console.log('Delete resource:', resource);
+                                    setSelectedResource(resource);
+                                    setDeleteResourceModalOpen(true);
                                 }}
                             />
                         ))}
@@ -192,6 +200,21 @@ const ResourcesPage = () => {
                     isOpen={viewResourceModalOpen}
                     onClose={() => setViewResourceModalOpen(false)}
                     resource={selectedResource}
+                />
+
+                <ResourceEditModal
+                    isOpen={editResourceModalOpen}
+                    onClose={() => setEditResourceModalOpen(false)}
+                    resource={selectedResource}
+                    courses={courses}
+                    onUpdateSuccess={loadResources}
+                />
+
+                <DeleteResourceModal
+                    isOpen={deleteResourceModalOpen}
+                    onClose={() => setDeleteResourceModalOpen(false)}
+                    resource={selectedResource}
+                    onDeleteSuccess={loadResources}
                 />
             </div>
         </div>

@@ -22,7 +22,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
-from pgvector.django import cosine_distance
+from pgvector.django import CosineDistance
 
 from .rag_models import DocumentChunk, StudyPlanContext, KnowledgeGraph, RAGQuery
 from .models import Resource
@@ -32,8 +32,17 @@ from apps.study_plans.models import StudyPlan
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Configure OpenAI
-openai.api_key = getattr(settings, 'OPENAI_API_KEY', '')
+# Configure OpenAI client (v1.0+ API)
+from openai import OpenAI
+
+# Initialize OpenAI client with explicit configuration
+def get_openai_client():
+    api_key = getattr(settings, 'OPENAI_API_KEY', '')
+    if not api_key:
+        raise ValueError("OpenAI API key not found in settings")
+    return OpenAI(api_key=api_key)
+
+client = None
 
 
 class DocumentProcessor:
@@ -256,7 +265,7 @@ class EmbeddingGenerator:
     """
     
     @staticmethod
-    async def generate_embedding(text: str, model: str = "text-embedding-3-small") -> List[float]:
+    def generate_embedding(text: str, model: str = "text-embedding-3-small") -> List[float]:
         """Generate embedding for a piece of text."""
         try:
             # Clean and truncate text if too long (OpenAI has token limits)
@@ -264,12 +273,13 @@ class EmbeddingGenerator:
             if len(cleaned_text) > 8000:  # Conservative token limit
                 cleaned_text = cleaned_text[:8000]
             
-            response = await openai.Embedding.acreate(
+            client = get_openai_client()
+            response = client.embeddings.create(
                 input=cleaned_text,
                 model=model
             )
             
-            return response['data'][0]['embedding']
+            return response.data[0].embedding
             
         except Exception as e:
             logger.error(f"Error generating embedding: {str(e)}")
@@ -303,7 +313,7 @@ class RAGRetriever:
         
         # Perform vector similarity search
         chunks = queryset.annotate(
-            similarity=1 - cosine_distance('embedding', query_embedding)
+            similarity=1 - CosineDistance('embedding', query_embedding)
         ).filter(
             similarity__gte=similarity_threshold
         ).order_by('-similarity')[:top_k]
@@ -367,7 +377,7 @@ class StudyPlanGenerator:
     """
     
     @staticmethod
-    async def generate_study_plan(
+    def generate_study_plan(
         user_id: int,
         course_id: int,
         query_text: str,
@@ -381,8 +391,9 @@ class StudyPlanGenerator:
         prompt = StudyPlanGenerator._build_generation_prompt(context, query_text)
         
         try:
-            response = await openai.ChatCompletion.acreate(
-                model="gpt-4-turbo-preview",
+            client = get_openai_client()
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",  # Using more cost-effective model
                 messages=[
                     {"role": "system", "content": StudyPlanGenerator._get_system_prompt()},
                     {"role": "user", "content": prompt}
@@ -532,7 +543,7 @@ class RAGPipeline:
     """
     
     @staticmethod
-    async def process_uploaded_resource(resource: Resource) -> bool:
+    def process_uploaded_resource(resource: Resource) -> bool:
         """
         Process an uploaded resource through the RAG pipeline.
         
@@ -560,7 +571,7 @@ class RAGPipeline:
                 
                 # Generate embeddings and create chunk objects
                 for chunk_data in chunks:
-                    embedding = await EmbeddingGenerator.generate_embedding(chunk_data['content'])
+                    embedding = EmbeddingGenerator.generate_embedding(chunk_data['content'])
                     
                     DocumentChunk.objects.create(
                         resource=resource,
@@ -584,7 +595,7 @@ class RAGPipeline:
             return False
     
     @staticmethod
-    async def generate_study_plan_from_rag(
+    def generate_study_plan_from_rag(
         user_id: int,
         course_id: int,
         query_text: str
@@ -595,7 +606,7 @@ class RAGPipeline:
         
         try:
             # Generate query embedding
-            query_embedding = await EmbeddingGenerator.generate_embedding(query_text)
+            query_embedding = EmbeddingGenerator.generate_embedding(query_text)
             
             # Retrieve contextual information
             context = RAGRetriever.retrieve_contextual_information(
@@ -606,7 +617,7 @@ class RAGPipeline:
             )
             
             # Generate study plan
-            plan_data = await StudyPlanGenerator.generate_study_plan(
+            plan_data = StudyPlanGenerator.generate_study_plan(
                 user_id=user_id,
                 course_id=course_id,
                 query_text=query_text,
@@ -628,6 +639,254 @@ class RAGPipeline:
         except Exception as e:
             logger.error(f"Error in RAG study plan generation: {str(e)}")
             return None
+
+    def answer_question_with_context(
+        self,
+        user,
+        question: str,
+        course=None,
+        context_type: str = 'general'
+    ) -> Dict[str, Any]:
+        """
+        Answer a student's question using RAG with context from uploaded resources.
+        
+        Args:
+            user: Django User object
+            question: Student's question
+            course: Optional Course object for context
+            context_type: Type of context ('general', 'specific', 'homework')
+            
+        Returns:
+            Dict containing answer, sources, confidence, etc.
+        """
+        try:
+            logger.info(f"Processing question: {question[:100]}...")
+            
+            # Generate embedding for the question
+            question_embedding = EmbeddingGenerator.generate_embedding(question)
+            
+            # Retrieve relevant context
+            context = RAGRetriever.retrieve_contextual_information(
+                user_id=user.id,
+                course_id=course.id if course else None,
+                query_text=question,
+                query_embedding=question_embedding
+            )
+            
+            # Build context-aware prompt
+            system_prompt = """You are a helpful AI tutor. Answer the student's question using the provided context from their study materials. 
+
+Guidelines:
+- Use the context to provide accurate, relevant answers
+- If the context doesn't contain enough information, say so honestly
+- Cite sources when referencing specific material
+- Keep explanations clear and educational
+- Encourage further learning
+"""
+            
+            # Build user prompt with context
+            relevant_chunks = context.get('relevant_chunks', [])
+            context_text = "\n\n".join([
+                f"Source: {chunk.resource.title}\n{chunk.content}"
+                for chunk in relevant_chunks[:5]  # Use top 5 most relevant chunks
+            ])
+            
+            user_prompt = f"""Context from study materials:
+{context_text}
+
+Student's Question: {question}
+
+Please provide a helpful answer based on the context above."""
+            
+            # Get AI response
+            client = get_openai_client()
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.3,  # Lower temperature for more factual responses
+                max_tokens=1000
+            )
+            
+            answer = response.choices[0].message.content
+            
+            # Prepare sources information
+            sources = []
+            for chunk in relevant_chunks[:3]:  # Include top 3 sources
+                sources.append({
+                    'title': chunk.resource.title,
+                    'resource_type': chunk.resource.resource_type,
+                    'chunk_content': chunk.content[:200] + "..." if len(chunk.content) > 200 else chunk.content,
+                    'confidence': float(getattr(chunk, 'similarity', 0.8))
+                })
+            
+            # Calculate confidence based on context relevance
+            confidence = 0.8 if relevant_chunks else 0.3
+            
+            # Log the query for analytics
+            RAGQuery.objects.create(
+                user=user,
+                query_text=question,
+                query_type='question_answer',
+                query_embedding=question_embedding,
+                retrieved_chunks=[chunk.id for chunk in relevant_chunks],
+                generated_response=answer
+            )
+            
+            return {
+                'answer': answer,
+                'sources': sources,
+                'confidence': confidence,
+                'context_used': len(relevant_chunks) > 0,
+                'rag_context_used': True
+            }
+            
+        except Exception as e:
+            logger.error(f"Error answering question: {str(e)}")
+            return {
+                'answer': f"I apologize, but I encountered an error while processing your question: {str(e)}\n\nPlease try rephrasing your question or contact support if the issue persists.",
+                'sources': [],
+                'confidence': 0.1,
+                'context_used': False,
+                'rag_context_used': False
+            }
+    
+    def generate_contextual_study_plan(
+        self,
+        user,
+        course,
+        query: str,
+        preferences: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Generate a study plan based on user preferences and available resources.
+        
+        Args:
+            user: Django User object
+            course: Course object
+            query: Natural language description of what to study
+            preferences: Dict with study preferences (difficulty, hours, etc.)
+            
+        Returns:
+            Dict containing study plan data
+        """
+        try:
+            logger.info(f"Generating study plan for query: {query[:100]}...")
+            
+            # Generate embedding for the query
+            query_embedding = EmbeddingGenerator.generate_embedding(query)
+            
+            # Retrieve relevant context from course resources
+            context = RAGRetriever.retrieve_contextual_information(
+                user_id=user.id,
+                course_id=course.id,
+                query_text=query,
+                query_embedding=query_embedding
+            )
+            
+            # Extract preferences
+            study_hours = preferences.get('study_hours', 10)
+            difficulty = preferences.get('difficulty_progression', 'moderate')
+            target_grade = preferences.get('target_grade', 'B+')
+            priority_topics = preferences.get('priority_topics', [])
+            
+            # Build context for study plan generation
+            relevant_chunks = context.get('relevant_chunks', [])
+            topics_from_resources = set()
+            for chunk in relevant_chunks:
+                topics_from_resources.update(chunk.topics)
+            
+            # Generate study plan using LLM
+            plan_data = self.generate_study_plan_from_rag(
+                user_id=user.id,
+                course_id=course.id,
+                query_text=f"""
+                Create a study plan for: {query}
+                
+                Course: {course.name}
+                Available study hours: {study_hours}
+                Difficulty preference: {difficulty}
+                Target grade: {target_grade}
+                Priority topics: {', '.join(priority_topics)}
+                Available topics from resources: {', '.join(list(topics_from_resources)[:10])}
+                """
+            )
+            
+            if not plan_data:
+                # Fallback plan generation
+                plan_data = self._generate_fallback_study_plan(
+                    query, course, study_hours, difficulty, topics_from_resources
+                )
+            
+            # Create and save the study plan
+            from apps.study_plans.models import StudyPlan
+            study_plan = StudyPlan.objects.create(
+                user=user,
+                course=course,
+                title=plan_data.get('title', f'AI Study Plan for {course.name}'),
+                description=plan_data.get('description', f'Generated study plan for: {query}'),
+                status='draft',
+                start_date=timezone.now().date(),
+                end_date=timezone.now().date() + timedelta(days=plan_data.get('duration_days', 14)),
+                plan_data=plan_data,
+                progress_percentage=0.0
+            )
+            
+            return {
+                'success': True,
+                'study_plan_id': study_plan.id,
+                'title': study_plan.title,
+                'description': study_plan.description,
+                'plan_data': plan_data,
+                'resources_used': len(relevant_chunks),
+                'rag_context_used': True
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generating study plan: {str(e)}")
+            raise
+    
+    def _generate_fallback_study_plan(
+        self,
+        query: str,
+        course,
+        study_hours: int,
+        difficulty: str,
+        topics: set
+    ) -> Dict[str, Any]:
+        """Generate a basic study plan when AI generation fails."""
+        
+        # Create basic plan structure
+        topics_list = list(topics)[:8] if topics else [
+            "Introduction", "Core Concepts", "Practice Problems", "Review"
+        ]
+        
+        hours_per_topic = max(1, study_hours // len(topics_list))
+        
+        plan_topics = []
+        for i, topic in enumerate(topics_list):
+            plan_topics.append({
+                'id': f'topic_{i+1}',
+                'title': topic,
+                'description': f'Study {topic} thoroughly',
+                'estimated_hours': hours_per_topic,
+                'difficulty_level': 3 if difficulty == 'moderate' else (2 if difficulty == 'easy' else 4),
+                'resources': [],
+                'completed': False
+            })
+        
+        return {
+            'title': f'Study Plan for {course.name}',
+            'description': f'AI-generated study plan for: {query}',
+            'topics': plan_topics,
+            'total_estimated_hours': study_hours,
+            'difficulty_level': 3,
+            'duration_days': max(7, study_hours // 2),
+            'generated_by': 'ai_assistant',
+            'generated_at': timezone.now().isoformat()
+        }
 
 
 

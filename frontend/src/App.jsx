@@ -9,7 +9,7 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import CoursesPage from './pages/CoursesPage.jsx';
 import CourseDetailPage from './pages/CourseDetailPage.jsx';
 import StudyPlansPage from './pages/StudyPlansPage.jsx';
-import AssistantPage from './pages/AssistantPage.jsx';
+import AIAssistantPage from './pages/AIAssistantPage.jsx';
 import ResourcesPage from './pages/ResourcesPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 
@@ -187,7 +187,7 @@ function App() {
                                 element={
                                     <ProtectedRoute>
                                         <Layout>
-                                            <AssistantPage />
+                                            <AIAssistantPage />
                                         </Layout>
                                     </ProtectedRoute>
                                 }

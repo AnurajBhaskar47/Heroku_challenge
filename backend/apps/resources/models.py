@@ -21,6 +21,10 @@ class Resource(models.Model):
 
     # Resource Type Choices
     RESOURCE_TYPE_CHOICES = [
+        ('pdf', 'PDF Document'),
+        ('docx', 'Word Document'),
+        ('txt', 'Text File'),
+        ('pptx', 'PowerPoint'),
         ('article', 'Article'),
         ('video', 'Video'),
         ('book', 'Book'),
@@ -30,6 +34,7 @@ class Resource(models.Model):
         ('paper', 'Research Paper'),
         ('quiz', 'Quiz/Practice'),
         ('tool', 'Tool/Software'),
+        ('url', 'Web Link'),
         ('other', 'Other'),
     ]
 
@@ -47,6 +52,14 @@ class Resource(models.Model):
     url = models.URLField(
         blank=True,
         help_text="Resource URL"
+    )
+
+    # File upload support
+    file = models.FileField(
+        upload_to='resources/files/',
+        blank=True,
+        null=True,
+        help_text="Uploaded file (PDF, DOCX, etc.)"
     )
 
     resource_type = models.CharField(
@@ -114,6 +127,15 @@ class Resource(models.Model):
         blank=True,
         related_name='added_resources',
         help_text="User who added this resource"
+    )
+
+    course = models.ForeignKey(
+        'courses.Course',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='resources',
+        help_text="Course this resource belongs to"
     )
 
     # Vector Search Support (pgvector-ready)
