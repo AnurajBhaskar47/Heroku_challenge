@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import Input from '../common/Input';
 import Select from '../common/Select';
-import Textarea from '../common/Textarea';
+import TextArea from '../common/TextArea';
 import Button from '../common/Button';
 import { resourcesService } from '../../services/resources';
 
@@ -132,7 +132,7 @@ const ResourceEditModal = ({ isOpen, onClose, resource, courses, onUpdateSuccess
                 />
 
                 {/* Description */}
-                <Textarea
+                <TextArea
                     label="Description"
                     value={editForm.description}
                     onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
@@ -215,3 +215,5 @@ const ResourceEditModal = ({ isOpen, onClose, resource, courses, onUpdateSuccess
 };
 
 export default ResourceEditModal;
+
+

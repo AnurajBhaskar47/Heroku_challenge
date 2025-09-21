@@ -143,3 +143,5 @@ const DeleteResourceModal = ({ isOpen, onClose, resource, onDeleteSuccess }) => 
 };
 
 export default DeleteResourceModal;
+
+

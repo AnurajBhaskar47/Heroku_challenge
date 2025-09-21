@@ -3,7 +3,7 @@ import Modal from '../common/Modal.jsx';
 import Button from '../common/Button.jsx';
 import Input from '../common/Input.jsx';
 import Select from '../common/Select.jsx';
-import Textarea from '../common/Textarea.jsx';
+import TextArea from '../common/TextArea.jsx';
 import { useCourses } from '../../hooks/useCourses.jsx';
 
 /**
@@ -322,7 +322,7 @@ const StudyPlanFormModal = ({
                     />
                 </div>
 
-                <Textarea
+                <TextArea
                     label="Description"
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
@@ -368,7 +368,7 @@ const StudyPlanFormModal = ({
                         {formData.plan_data.topics.map((topic, index) => (
                             <div key={topic.id} className="p-4 border rounded-lg">
                                 <div className="flex justify-between items-start mb-3">
-                                    <h4 className="font-medium text-sm">Topic {index + 1}</h4>
+                                    <h4 className="font-medium text-sm">{topic.name || topic.title || `Topic ${index + 1}`}</h4>
                                     <button
                                         type="button"
                                         onClick={() => removeTopic(topic.id)}
@@ -380,10 +380,10 @@ const StudyPlanFormModal = ({
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <Input
-                                        label="Topic Title"
-                                        value={topic.title}
-                                        onChange={(e) => updateTopic(topic.id, 'title', e.target.value)}
-                                        placeholder="e.g., Derivatives"
+                                        label="Topic Name"
+                                        value={topic.name || topic.title}
+                                        onChange={(e) => updateTopic(topic.id, 'name', e.target.value)}
+                                        placeholder="e.g., Binary Trees"
                                         size="sm"
                                     />
                                     
@@ -423,7 +423,7 @@ const StudyPlanFormModal = ({
                                     />
                                     
                                     <div className="md:col-span-2">
-                                        <Textarea
+                                        <TextArea
                                             label="Description"
                                             value={topic.description}
                                             onChange={(e) => updateTopic(topic.id, 'description', e.target.value)}
@@ -462,7 +462,7 @@ const StudyPlanFormModal = ({
                         {formData.plan_data.milestones.map((milestone, index) => (
                             <div key={milestone.id} className="p-4 border rounded-lg">
                                 <div className="flex justify-between items-start mb-3">
-                                    <h4 className="font-medium text-sm">Milestone {index + 1}</h4>
+                                    <h4 className="font-medium text-sm">{milestone.name || milestone.title || `Milestone ${index + 1}`}</h4>
                                     <button
                                         type="button"
                                         onClick={() => removeMilestone(milestone.id)}
@@ -474,10 +474,10 @@ const StudyPlanFormModal = ({
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <Input
-                                        label="Milestone Title"
-                                        value={milestone.title}
-                                        onChange={(e) => updateMilestone(milestone.id, 'title', e.target.value)}
-                                        placeholder="e.g., Complete Chapter 3"
+                                        label="Milestone Name"
+                                        value={milestone.name || milestone.title}
+                                        onChange={(e) => updateMilestone(milestone.id, 'name', e.target.value)}
+                                        placeholder="e.g., Master Binary Tree Operations"
                                         size="sm"
                                     />
                                     
@@ -490,7 +490,7 @@ const StudyPlanFormModal = ({
                                     />
                                     
                                     <div className="md:col-span-2">
-                                        <Textarea
+                                        <TextArea
                                             label="Description"
                                             value={milestone.description}
                                             onChange={(e) => updateMilestone(milestone.id, 'description', e.target.value)}

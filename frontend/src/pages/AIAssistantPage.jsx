@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Select from '../components/common/Select';
+import TextArea from '../components/common/TextArea';
 import { resourcesService } from '../services/resources';
 import { coursesService } from '../services/courses';
 
@@ -338,7 +339,7 @@ const AIAssistantPage = () => {
                     <Card className="p-4">
                         <div className="flex gap-4">
                             <div className="flex-1">
-                                <textarea
+                                <TextArea
                                     value={inputMessage}
                                     onChange={(e) => setInputMessage(e.target.value)}
                                     placeholder="Ask me anything about your studies, uploaded resources, or request help with concepts..."
@@ -389,3 +390,5 @@ const AIAssistantPage = () => {
 };
 
 export default AIAssistantPage;
+
+

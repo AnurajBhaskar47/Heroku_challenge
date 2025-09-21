@@ -169,7 +169,7 @@ All API interactions are organized into service modules:
 ### Common Components
 
 - **Button**: Multiple variants (primary, secondary, outline, ghost, danger)
-- **Input/Textarea/Select**: Form controls with validation and error states
+- **Input/TextArea/Select**: Form controls with validation and error states
 - **Card**: Flexible container with header, body, and footer sections
 - **Modal**: Overlay dialogs with customizable content
 - **Layout**: Main application layout with sidebar navigation

@@ -280,3 +280,289 @@ class Assignment(models.Model):
         if self.is_overdue and self.status == 'not_started':
             self.status = 'overdue'
         super().save(*args, **kwargs)
+
+
+class CourseQuiz(models.Model):
+    """
+    Model for storing quiz files that can be uploaded to a course.
+    These are processed through the RAG pipeline for context.
+    """
+
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='quiz_files',
+        help_text="Course this quiz belongs to"
+    )
+
+    title = models.CharField(
+        max_length=200,
+        help_text="Quiz title"
+    )
+
+    description = models.TextField(
+        blank=True,
+        help_text="Quiz description or notes"
+    )
+
+    file = models.FileField(
+        upload_to='courses/quizzes/',
+        help_text="Quiz file (PDF, DOCX, TXT, etc.)"
+    )
+
+    file_type = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Detected file type"
+    )
+
+    # RAG Processing Status
+    is_processed = models.BooleanField(
+        default=False,
+        help_text="Whether this quiz has been processed by the RAG pipeline"
+    )
+
+    processing_error = models.TextField(
+        blank=True,
+        help_text="Error message if RAG processing failed"
+    )
+
+    # Metadata
+    file_size = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="File size in bytes"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'courses_quiz'
+        verbose_name = 'Course Quiz'
+        verbose_name_plural = 'Course Quizzes'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} - {self.course.name}"
+
+
+class CourseAssignmentFile(models.Model):
+    """
+    Model for storing assignment files that can be uploaded to a course.
+    These are processed through the RAG pipeline for context and automatically
+    create Assignment entries based on extracted information.
+    """
+
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='assignment_files',
+        help_text="Course this assignment file belongs to"
+    )
+
+    # Link to the created assignment (if successfully extracted)
+    assignment = models.OneToOneField(
+        'Assignment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='source_file',
+        help_text="Assignment entry created from this file"
+    )
+
+    title = models.CharField(
+        max_length=200,
+        help_text="Assignment file title"
+    )
+
+    description = models.TextField(
+        blank=True,
+        help_text="Assignment description or instructions"
+    )
+
+    file = models.FileField(
+        upload_to='courses/assignments/',
+        help_text="Assignment file (PDF, DOCX, TXT, etc.)"
+    )
+
+    file_type = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Detected file type"
+    )
+
+    # RAG Processing Status
+    is_processed = models.BooleanField(
+        default=False,
+        help_text="Whether this assignment has been processed by the RAG pipeline"
+    )
+
+    processing_error = models.TextField(
+        blank=True,
+        help_text="Error message if RAG processing failed"
+    )
+
+    # Metadata
+    file_size = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="File size in bytes"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'courses_assignment_file'
+        verbose_name = 'Course Assignment File'
+        verbose_name_plural = 'Course Assignment Files'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} - {self.course.name}"
+
+
+class CourseTopic(models.Model):
+    """
+    Model for storing course topics extracted from syllabus content.
+    Can be created from text paste or PDF upload and processed through RAG pipeline.
+    """
+
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='course_topics',
+        help_text="Course this topic belongs to"
+    )
+
+    # Content Sources
+    syllabus_text = models.TextField(
+        blank=True,
+        help_text="Syllabus text content pasted by user"
+    )
+
+    syllabus_file = models.FileField(
+        upload_to='courses/syllabi/',
+        blank=True,
+        null=True,
+        help_text="Uploaded syllabus file (PDF, DOCX, etc.)"
+    )
+
+    # Extracted Topics
+    extracted_topics = models.JSONField(
+        default=list,
+        help_text="Topics extracted from syllabus content"
+    )
+
+    topics_summary = models.TextField(
+        blank=True,
+        help_text="AI-generated summary of course topics"
+    )
+
+    # RAG Processing Status
+    is_processed = models.BooleanField(
+        default=False,
+        help_text="Whether the syllabus has been processed by the RAG pipeline"
+    )
+
+    processing_error = models.TextField(
+        blank=True,
+        help_text="Error message if RAG processing failed"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'courses_topic'
+        verbose_name = 'Course Topic'
+        verbose_name_plural = 'Course Topics'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Topics for {self.course.name}"
+
+    @property
+    def has_content(self):
+        """Check if there's any content (text or file) to process."""
+        return bool(self.syllabus_text.strip() or self.syllabus_file)
+
+    @property
+    def content_source(self):
+        """Return the type of content source."""
+        if self.syllabus_file:
+            return "file"
+        elif self.syllabus_text.strip():
+            return "text"
+        return "none"
+
+
+class CourseTopicItem(models.Model):
+    """
+    Individual topic item extracted from course syllabus.
+    Each topic has its own title, description, and difficulty level.
+    """
+    DIFFICULTY_CHOICES = [
+        ('beginner', 'Beginner'),
+        ('intermediate', 'Intermediate'),
+        ('advanced', 'Advanced'),
+    ]
+
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='topic_items',
+        help_text="Course this topic belongs to"
+    )
+
+    course_topic = models.ForeignKey(
+        CourseTopic,
+        on_delete=models.CASCADE,
+        related_name='topic_items',
+        help_text="Parent CourseTopic (syllabus) this item was extracted from"
+    )
+
+    title = models.CharField(
+        max_length=200,
+        help_text="Topic title/name"
+    )
+
+    description = models.TextField(
+        blank=True,
+        help_text="Detailed description of the topic"
+    )
+
+    difficulty = models.CharField(
+        max_length=20,
+        choices=DIFFICULTY_CHOICES,
+        default='intermediate',
+        help_text="Difficulty level of this topic"
+    )
+
+    order = models.PositiveIntegerField(
+        default=0,
+        help_text="Order of this topic in the syllabus"
+    )
+
+    is_completed = models.BooleanField(
+        default=False,
+        help_text="Whether this topic has been marked as completed"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'courses_topic_item'
+        verbose_name = 'Course Topic Item'
+        verbose_name_plural = 'Course Topic Items'
+        ordering = ['order', 'created_at']
+        unique_together = ['course_topic', 'title']
+
+    def __str__(self):
+        return f"{self.title} ({self.course.name})"

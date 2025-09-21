@@ -563,7 +563,7 @@ const StudyPlanDetailModal = ({
                                                     ) : null}
                                                 </button>
                                                 <h4 className={`font-medium ${completedTopics.has(topic.id) ? 'line-through text-green-700' : ''}`}>
-                                                    {topic.title || `Topic ${index + 1}`}
+                                                    {topic.name || topic.title || `Topic ${index + 1}`}
                                                 </h4>
                                             </div>
                                             
@@ -644,7 +644,7 @@ const StudyPlanDetailModal = ({
                                                     )}
                                                 </button>
                                                 <h4 className={`font-medium ${completedMilestones.has(milestone.id) ? 'line-through text-blue-700' : ''}`}>
-                                                    {milestone.title || `Milestone ${index + 1}`}
+                                                    {milestone.name || milestone.title || `Milestone ${index + 1}`}
                                                 </h4>
                                             </div>
                                             

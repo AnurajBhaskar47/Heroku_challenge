@@ -47,3 +47,5 @@ class Migration(migrations.Migration):
             reverse_sql="DROP INDEX IF EXISTS knowledge_graph_embedding_cosine_idx;"
         ),
     ]
+
+

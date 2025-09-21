@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Modal from '../common/Modal';
 import Input from '../common/Input';
 import Select from '../common/Select';
-import Textarea from '../common/Textarea';
+import TextArea from '../common/TextArea';
 import Button from '../common/Button';
 import { resourcesService } from '../../services/resources';
 
@@ -137,7 +137,7 @@ const ResourceUploadModal = ({ isOpen, onClose, courses, onUploadSuccess }) => {
                 />
 
                 {/* Description */}
-                <Textarea
+                <TextArea
                     label="Description"
                     value={uploadForm.description}
                     onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}

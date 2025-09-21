@@ -1,5 +1,5 @@
-import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Card, { CardHeader, CardTitle, CardBody } from '../components/common/Card.jsx';
 import Button from '../components/common/Button.jsx';
 import ConfirmationModal from '../components/common/ConfirmationModal.jsx';
@@ -8,8 +8,9 @@ import { coursesService } from '../services/courses.js';
 import { formatDate } from '../utils/formatters.js';
 import { getErrorMessage } from '../services/api.js';
 import CourseFormModal from '../components/courses/CourseFormModal.jsx';
-import AssignmentFormModal from '../components/assignments/AssignmentFormModal.jsx';
-import AssignmentCard from '../components/assignments/AssignmentCard.jsx';
+import QuizFileSection from '../components/courses/QuizFileSection.jsx';
+import AssignmentsSection from '../components/courses/AssignmentsSection.jsx';
+import TopicsSection from '../components/courses/TopicsSection.jsx';
 
 /**
  * Course detail page component
@@ -19,23 +20,17 @@ const CourseDetailPage = () => {
     const navigate = useNavigate();
     const {
         updateCourse,
-        deleteCourse,
-        createAssignment,
-        updateAssignment,
-        deleteAssignment: deleteAssignmentFromHook
+        deleteCourse
     } = useCourses();
 
     const [course, setCourse] = useState(null);
-    const [assignments, setAssignments] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
-    const [editingAssignment, setEditingAssignment] = useState(null);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
-    // Fetch course details and assignments
+    // Fetch course details
     const fetchCourseData = useCallback(async () => {
         try {
             setIsLoading(true);
@@ -44,10 +39,6 @@ const CourseDetailPage = () => {
             // Fetch course details
             const courseResponse = await coursesService.getCourse(id);
             setCourse(courseResponse);
-
-            // Fetch assignments for this course
-            const assignmentsResponse = await coursesService.getAssignments(id);
-            setAssignments(assignmentsResponse.results || assignmentsResponse || []);
 
         } catch (err) {
             setError(getErrorMessage(err));
@@ -94,67 +85,7 @@ const CourseDetailPage = () => {
         }
     };
 
-    const handleAddAssignment = () => {
-        setEditingAssignment(null);
-        setIsAssignmentModalOpen(true);
-    };
-
-    const handleEditAssignment = (assignment) => {
-        setEditingAssignment(assignment);
-        setIsAssignmentModalOpen(true);
-    };
-
-    const handleDeleteAssignment = async (assignment) => {
-        const result = await deleteAssignmentFromHook(course.id, assignment.id);
-        if (result.success) {
-            fetchCourseData(); // Refetch all data
-        }
-        return result;
-    };
-
-    const handleUpdateAssignmentStatus = async (assignment, status) => {
-        // Optimistically update the UI
-        setAssignments(prev => prev.map(a => a.id === assignment.id ? { ...a, status } : a));
-
-        try {
-            let updatedAssignment;
-            if (status === 'in_progress') {
-                updatedAssignment = await coursesService.markAssignmentInProgress(course.id, assignment.id);
-            } else if (status === 'completed') {
-                updatedAssignment = await coursesService.markAssignmentCompleted(course.id, assignment.id);
-            } else {
-                // For other status changes, use the generic update method
-                const result = await updateAssignment(course.id, assignment.id, { status });
-                updatedAssignment = result.assignment;
-            }
-
-            // Update with the actual response from the server
-            setAssignments(prev => prev.map(a => a.id === assignment.id ? updatedAssignment : a));
-        } catch (error) {
-            // If the update fails, revert the change and show an error
-            setAssignments(prev => prev.map(a => a.id === assignment.id ? { ...a, status: assignment.status } : a));
-            // TODO: Show a toast notification with the error
-            console.error('Failed to update assignment status:', error);
-        }
-    };
-
-    const handleSubmitAssignment = async (assignmentData) => {
-        setIsSubmitting(true);
-        try {
-            let result;
-            if (editingAssignment) {
-                result = await updateAssignment(course.id, editingAssignment.id, assignmentData);
-            } else {
-                result = await createAssignment(course.id, assignmentData);
-            }
-            if (result.success) {
-                setIsAssignmentModalOpen(false);
-                fetchCourseData(); // Refetch all data
-            }
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+    // Course statistics (these will be handled by integrated AssignmentsSection)
 
     const getDifficultyLabel = (difficulty) => {
         switch (difficulty) {
@@ -178,30 +109,27 @@ const CourseDetailPage = () => {
         }
     };
 
-    // Calculate dynamic progress based on current assignments state
-    const totalAssignments = assignments.length;
-    const completedAssignments = assignments.filter(a => a.status === 'completed').length;
-    const progressPercentage = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0;
-
     if (isLoading) {
         return (
             <div className="space-y-6">
                 <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                    <p className="mt-2 text-sm text-gray-500">Loading course details...</p>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading course details...</p>
                 </div>
             </div>
         );
     }
 
-    if (error || course === 'not_found') {
+    // Show not found state
+    if (course === 'not_found') {
         return (
-            <div className="space-y-6">
-                <div className="text-center py-12">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-4">Course Not Found</h1>
-                    <p className="text-gray-600 mb-6">
-                        {error || "The course you're looking for doesn't exist or has been removed."}
-                    </p>
+            <div className="text-center py-12">
+                <div className="max-w-md mx-auto">
+                    <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m6-4a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Course not found</h2>
+                    <p className="text-gray-600 mb-6">The course you're looking for doesn't exist or you don't have access to it.</p>
                     <Button onClick={() => navigate('/courses')}>
                         Back to Courses
                     </Button>
@@ -257,9 +185,11 @@ const CourseDetailPage = () => {
                 </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-3">
-                {/* Course Information */}
-                <div className="lg:col-span-2 space-y-6">
+            {/* Top Section: Course Information + Course Overview with Course Topics Sidebar */}
+            <div className="grid gap-6 lg:grid-cols-10 mb-6">
+                {/* Left Content - Course Information + Course Overview (70%) */}
+                <div className="lg:col-span-7 space-y-6">
+                    {/* Course Information */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Course Information</CardTitle>
@@ -332,92 +262,64 @@ const CourseDetailPage = () => {
 
                                         <div className="flex items-center text-sm">
                                             <span className="text-gray-600">Status:</span>
-                                            <span className={`ml-1 px-2 py-1 text-xs font-medium rounded-full ${course.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                            <span className={`ml-1 px-2 py-1 text-xs font-medium rounded-full ${course.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                                }`}>
                                                 {course.is_active ? 'Active' : 'Inactive'}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Syllabus */}
-                            {course.syllabus_text && (
-                                <div className="mt-6">
-                                    <h4 className="text-sm font-medium text-gray-900 mb-3">Syllabus</h4>
-                                    <div className="bg-gray-50 p-4 rounded-md">
-                                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{course.syllabus_text}</p>
-                                    </div>
-                                </div>
-                            )}
                         </CardBody>
                     </Card>
 
-                    {/* Course Stats */}
+                    {/* Course Overview */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Progress Overview</CardTitle>
+                            <CardTitle>Course Overview</CardTitle>
                         </CardHeader>
                         <CardBody>
-                            <div className="grid grid-cols-3 gap-6">
+                            <div className="grid grid-cols-2 gap-12">
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold text-gray-900">{totalAssignments}</div>
-                                    <div className="text-sm text-gray-600">Total Assignments</div>
+                                    <div className="text-2xl font-bold text-gray-900">{course.credits}</div>
+                                    <div className="text-sm text-gray-600">Credits</div>
                                 </div>
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold text-green-600">{completedAssignments}</div>
-                                    <div className="text-sm text-gray-600">Completed</div>
+                                    <div className="text-2xl font-bold text-blue-600">{getDifficultyLabel(course.difficulty_level)}</div>
+                                    <div className="text-sm text-gray-600">Difficulty</div>
                                 </div>
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold text-blue-600">{progressPercentage}%</div>
-                                    <div className="text-sm text-gray-600">Progress</div>
+                                    <div className={`text-2xl font-bold ${course.is_active ? 'text-green-600' : 'text-gray-600'}`}>
+                                        {course.is_active ? 'Active' : 'Inactive'}
+                                    </div>
+                                    <div className="text-sm text-gray-600">Status</div>
                                 </div>
                             </div>
                         </CardBody>
                     </Card>
                 </div>
 
-                {/* Assignments Sidebar */}
-                <div>
-                    <Card>
-                        <CardHeader>
-                            <div className="flex justify-between items-center">
-                                <CardTitle>Assignments</CardTitle>
-                                <Button size="sm" onClick={handleAddAssignment}>
-                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                    Add
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardBody>
-                            {assignments.length === 0 ? (
-                                <div className="text-center py-8">
-                                    <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                                    </svg>
-                                    <p className="text-gray-600 text-sm mb-4">
-                                        No assignments yet. Create your first assignment to get started.
-                                    </p>
-                                    <Button size="sm" onClick={handleAddAssignment} fullWidth>
-                                        Create Assignment
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {assignments.map((assignment) => (
-                                        <AssignmentCard
-                                            key={assignment.id}
-                                            assignment={assignment}
-                                            onEdit={handleEditAssignment}
-                                            onDelete={handleDeleteAssignment}
-                                            onUpdateStatus={handleUpdateAssignmentStatus}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </CardBody>
-                    </Card>
+                {/* Course Topics Sidebar - spans height of Course Information + Course Overview (30%) */}
+                <div className="lg:col-span-3">
+                    <div className="lg:sticky lg:top-6">
+                        <TopicsSection courseId={id} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Section: Quiz Files and Assignments - Full Width 50% each */}
+            <div className="grid gap-6 md:grid-cols-2">
+                {/* Quiz Files - 50% of full width */}
+                <div className="w-full">
+                    <QuizFileSection courseId={id} />
+                </div>
+
+                {/* Assignments - 50% of full width */}
+                <div className="w-full">
+                    <AssignmentsSection 
+                        courseId={id} 
+                        onUpdateAssignmentStatus={fetchCourseData} 
+                    />
                 </div>
             </div>
 
@@ -427,14 +329,6 @@ const CourseDetailPage = () => {
                 onClose={() => setIsEditModalOpen(false)}
                 onSubmit={handleUpdateCourse}
                 course={course}
-                isSubmitting={isSubmitting}
-            />
-
-            <AssignmentFormModal
-                isOpen={isAssignmentModalOpen}
-                onClose={() => setIsAssignmentModalOpen(false)}
-                onSubmit={handleSubmitAssignment}
-                assignment={editingAssignment}
                 isSubmitting={isSubmitting}
             />
 

@@ -97,8 +97,33 @@ class DocumentProcessor:
         # Clean and normalize text
         text = re.sub(r'\s+', ' ', text.strip())
         
-        # Split into paragraphs first
-        paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
+        # Try multiple splitting strategies for better chunking
+        paragraphs = []
+        
+        # Strategy 1: Split by double newlines (standard paragraphs)
+        initial_split = [p.strip() for p in text.split('\n\n') if p.strip()]
+        
+        # Strategy 2: If we get only 1 paragraph, try single newlines
+        if len(initial_split) <= 1:
+            initial_split = [p.strip() for p in text.split('\n') if p.strip() and len(p.strip()) > 50]
+        
+        # Strategy 3: If still only 1 chunk, split by sentences
+        if len(initial_split) <= 1:
+            sentences = re.split(r'[.!?]+', text)
+            sentences = [s.strip() for s in sentences if s.strip() and len(s.strip()) > 20]
+            # Group sentences into paragraphs
+            current_para = ""
+            for sentence in sentences:
+                if len(current_para) + len(sentence) < 500:  # Keep paragraphs reasonable
+                    current_para += sentence + ". "
+                else:
+                    if current_para.strip():
+                        initial_split.append(current_para.strip())
+                    current_para = sentence + ". "
+            if current_para.strip():
+                initial_split.append(current_para.strip())
+        
+        paragraphs = initial_split
         
         chunks = []
         current_chunk = ""
@@ -180,21 +205,81 @@ class DocumentProcessor:
     
     @staticmethod
     def _extract_topics(content: str) -> List[str]:
-        """Extract topics from content using keyword detection."""
-        # This is a simple implementation - could be enhanced with NLP
+        """Extract academic topics from content using AI."""
+        try:
+            # Limit content length for API efficiency
+            if len(content) > 3000:
+                content = content[:3000] + "..."
+            
+            client = get_openai_client()
+            
+            prompt = f"""Analyze the following academic content and extract the main topics, concepts, and subjects discussed. 
+            Focus on:
+            - Academic concepts and theories
+            - Technical terms and methodologies
+            - Key subjects and fields of study
+            - Important algorithms, formulas, or principles
+            
+            Return ONLY a comma-separated list of topics (max 8 topics), no explanations.
+            
+            Content:
+            {content}
+            
+            Topics:"""
+            
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=200
+            )
+            
+            topics_text = response.choices[0].message.content.strip()
+            
+            # Parse the comma-separated topics
+            topics = [topic.strip() for topic in topics_text.split(',') if topic.strip()]
+            topics = [topic for topic in topics if len(topic) > 3 and len(topic) < 50]
+            
+            return topics[:8]  # Limit to 8 topics
+            
+        except Exception as e:
+            logger.warning(f"Failed to extract topics with AI: {str(e)}")
+            # Fallback to improved keyword extraction
+            return DocumentProcessor._extract_topics_fallback(content)
+    
+    @staticmethod
+    def _extract_topics_fallback(content: str) -> List[str]:
+        """Fallback topic extraction using improved patterns."""
         topic_patterns = [
-            r'\b([A-Z][a-z]+ [A-Z][a-z]+)\b',  # Capitalized phrases
-            r'\b(Chapter \d+[:\s]+[^.\n]+)',    # Chapter titles
-            r'\b(Section \d+[:\s]+[^.\n]+)',    # Section titles
+            r'\b(Chapter \d+[:\s]*([^.\n]{10,50}))',        # Chapter titles
+            r'\b(Section \d+\.?\d*[:\s]*([^.\n]{10,50}))',  # Section titles
+            r'\b(\d+\.\d+[:\s]*([^.\n]{10,50}))',          # Numbered sections
+            r'\b(Algorithm|Method|Theorem|Principle|Law|Rule|Concept)[:\s]*([^.\n]{5,40})',  # Academic terms
+            r'\b([A-Z][a-z]+(?: [A-Z][a-z]+){1,2})\s*(?:algorithm|method|theorem|principle|law|rule|concept|analysis|approach|technique)',  # Academic concepts
         ]
         
         topics = []
         for pattern in topic_patterns:
-            matches = re.findall(pattern, content)
-            topics.extend([match.strip() for match in matches if len(match.strip()) > 3])
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            for match in matches:
+                # Handle tuple matches from grouped regex
+                if isinstance(match, tuple):
+                    for part in match:
+                        if part.strip() and len(part.strip()) > 5:
+                            topics.append(part.strip())
+                else:
+                    if match.strip() and len(match.strip()) > 5:
+                        topics.append(match.strip())
         
-        # Remove duplicates and limit to top 10
-        return list(set(topics))[:10]
+        # Clean and filter topics
+        cleaned_topics = []
+        for topic in topics:
+            # Remove common words that aren't actual topics
+            if not re.match(r'^(the|and|or|but|in|on|at|to|for|of|with|by)$', topic.lower()):
+                cleaned_topics.append(topic)
+        
+        # Remove duplicates and limit
+        return list(set(cleaned_topics))[:8]
     
     @staticmethod
     def _estimate_difficulty(content: str) -> int:
@@ -366,6 +451,7 @@ class RAGRetriever:
                 'query_text': query_text
             }
             
+            
         except Exception as e:
             logger.error(f"Error retrieving contextual information: {str(e)}")
             return {}
@@ -428,15 +514,46 @@ Create study plans that are:
 - Balanced in workload
 - Adaptive to student's schedule
 - Focused on learning objectives
+- Use SPECIFIC TOPIC NAMES from the provided study materials (not generic "Topic 1", "Topic 2")
+- Include MEANINGFUL MILESTONES with actual learning outcomes (not generic "Milestone 1")
 
-Always respond with a valid JSON structure containing:
-- title: Study plan title
-- description: Brief description
-- topics: Array of study topics with details
-- schedule: Recommended study schedule
-- milestones: Key checkpoints
-- estimated_hours: Total time estimate
-- difficulty_progression: How difficulty increases over time"""
+CRITICAL: Extract and use the actual topic names, concepts, and subjects mentioned in the study materials. Create specific, actionable milestones based on the content.
+
+Always respond with a valid JSON structure:
+{
+  "title": "Specific study plan title related to course content",
+  "description": "Brief description mentioning key concepts from materials",
+  "topics": [
+    {
+      "id": "unique_topic_id_1",
+      "name": "Actual topic name from content (e.g., 'Binary Trees and Traversal')",
+      "description": "What this topic covers",
+      "difficulty_level": 1-5,
+      "estimated_hours": number,
+      "prerequisites": ["list of prerequisite topics"],
+      "learning_objectives": ["specific learning goals"],
+      "completed": false
+    }
+  ],
+  "milestones": [
+    {
+      "id": "unique_milestone_id_1", 
+      "name": "Meaningful milestone (e.g., 'Master Binary Tree Operations')",
+      "description": "What student will achieve",
+      "target_topics": ["topics covered by this milestone"],
+      "week": week_number,
+      "deliverable": "concrete outcome",
+      "completed": false
+    }
+  ],
+  "schedule": {
+    "total_weeks": number,
+    "hours_per_week": number,
+    "study_sessions": ["recommended schedule"]
+  },
+  "estimated_total_hours": number,
+  "difficulty_progression": "gradual|mixed|front_loaded|back_loaded"
+}"""
     
     @staticmethod
     def _build_generation_prompt(context: Dict[str, Any], query_text: str) -> str:
@@ -513,9 +630,31 @@ Always respond with a valid JSON structure containing:
                     ""
                 ])
         
+        # Extract all topics for emphasis
+        all_topics = set()
+        if context.get('relevant_chunks'):
+            for chunk in context['relevant_chunks']:
+                all_topics.update(chunk.topics)
+        
+        if context.get('knowledge_nodes'):
+            for node in context['knowledge_nodes']:
+                all_topics.add(node.topic_name)
+        
         prompt_parts.extend([
             "",
-            "Based on this information, create a comprehensive, personalized study plan in JSON format."
+            "=== INSTRUCTIONS ===",
+            "Create a comprehensive, personalized study plan in JSON format.",
+            "",
+            "IMPORTANT REQUIREMENTS:",
+            "1. Use SPECIFIC topic names from the study materials above, not generic labels",
+            "2. Create meaningful milestones that reflect actual learning outcomes",
+            "3. Reference the actual concepts, algorithms, and theories mentioned in the content",
+            "4. Ensure topics build on each other logically",
+            "5. Include concrete, measurable learning objectives",
+            "",
+            f"Available Topics to Reference: {', '.join(sorted(all_topics)) if all_topics else 'Extract from content above'}",
+            "",
+            "Generate the study plan JSON now:"
         ])
         
         return "\n".join(prompt_parts)
@@ -528,7 +667,27 @@ Always respond with a valid JSON structure containing:
             json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
             if json_match:
                 json_str = json_match.group()
-                return json.loads(json_str)
+                parsed_data = json.loads(json_str)
+                
+                # Ensure all topics have unique IDs and completed field
+                if 'topics' in parsed_data and isinstance(parsed_data['topics'], list):
+                    for i, topic in enumerate(parsed_data['topics']):
+                        if isinstance(topic, dict):
+                            if not topic.get('id'):
+                                topic['id'] = f"topic_{i+1}_{hash(topic.get('name', ''))%10000}"
+                            if 'completed' not in topic:
+                                topic['completed'] = False
+                
+                # Ensure all milestones have unique IDs and completed field
+                if 'milestones' in parsed_data and isinstance(parsed_data['milestones'], list):
+                    for i, milestone in enumerate(parsed_data['milestones']):
+                        if isinstance(milestone, dict):
+                            if not milestone.get('id'):
+                                milestone['id'] = f"milestone_{i+1}_{hash(milestone.get('name', ''))%10000}"
+                            if 'completed' not in milestone:
+                                milestone['completed'] = False
+                
+                return parsed_data
             else:
                 logger.error("No JSON found in AI response")
                 return {}

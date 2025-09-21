@@ -16,6 +16,129 @@ import uuid
 User = get_user_model()
 
 
+class Document(models.Model):
+    """
+    Represents a source document that has been processed for RAG.
+    
+    This model stores the original document metadata and content
+    before it gets chunked into DocumentChunk instances.
+    """
+    
+    DOCUMENT_TYPES = [
+        ('course_quiz', 'Course Quiz'),
+        ('course_assignment', 'Course Assignment'),
+        ('course_syllabus', 'Course Syllabus'),
+        ('resource', 'Resource Document'),
+        ('textbook', 'Textbook'),
+        ('research_paper', 'Research Paper'),
+        ('lecture_notes', 'Lecture Notes'),
+        ('other', 'Other'),
+    ]
+    
+    # Unique identifier
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Document metadata
+    title = models.CharField(max_length=500, help_text="Document title")
+    content = models.TextField(help_text="Full document content or excerpt")
+    document_type = models.CharField(
+        max_length=50,
+        choices=DOCUMENT_TYPES,
+        default='other',
+        help_text="Type of document"
+    )
+    source_url = models.URLField(blank=True, help_text="Source URL or file path")
+    
+    # JSON metadata for flexible storage
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Additional metadata as JSON"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'resources_document'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['document_type']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.title} ({self.document_type})"
+
+
+class KnowledgeNode(models.Model):
+    """
+    Represents a knowledge node extracted from documents.
+    
+    Knowledge nodes represent topics, concepts, or entities that
+    have been identified across multiple document chunks.
+    """
+    
+    # Unique identifier
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Knowledge content
+    topic = models.CharField(
+        max_length=500,
+        help_text="Main topic or concept",
+        db_index=True
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Detailed description of the topic"
+    )
+    
+    # Quality metrics
+    confidence_score = models.FloatField(
+        default=0.0,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text="Confidence in topic extraction (0.0-1.0)"
+    )
+    
+    # JSON metadata for flexible storage
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Additional metadata as JSON"
+    )
+    
+    # Relationships
+    related_chunks = models.ManyToManyField(
+        'DocumentChunk',
+        blank=True,
+        related_name='knowledge_nodes',
+        help_text="Document chunks related to this knowledge node"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'resources_knowledge_node'
+        ordering = ['-confidence_score', 'topic']
+        indexes = [
+            models.Index(fields=['topic']),
+            models.Index(fields=['confidence_score']),
+            models.Index(fields=['created_at']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['topic'],
+                name='unique_knowledge_node_topic'
+            )
+        ]
+    
+    def __str__(self):
+        return f"{self.topic} (confidence: {self.confidence_score:.2f})"
+
+
 class DocumentChunk(models.Model):
     """
     Represents a chunk of processed document content with vector embeddings.
@@ -41,11 +164,22 @@ class DocumentChunk(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
     # Relationships
+    document = models.ForeignKey(
+        'Document',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='chunks',
+        help_text="Parent document this chunk belongs to"
+    )
+    
     resource = models.ForeignKey(
         'Resource',
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name='chunks',
-        help_text="Parent resource this chunk belongs to"
+        help_text="Parent resource this chunk belongs to (if from resource)"
     )
     
     course = models.ForeignKey(
@@ -375,6 +509,8 @@ class RAGQuery(models.Model):
 
     def __str__(self):
         return f"Query by {self.user.username}: {self.query_text[:50]}..."
+
+
 
 
 

@@ -4,7 +4,7 @@ Serializers for the courses app.
 
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Course, Assignment
+from .models import Course, Assignment, CourseQuiz, CourseAssignmentFile, CourseTopic, CourseTopicItem
 
 
 class AssignmentSerializer(serializers.ModelSerializer):
@@ -165,3 +165,153 @@ class AssignmentStatsSerializer(serializers.Serializer):
     count = serializers.IntegerField()
     completed_count = serializers.IntegerField()
     average_grade = serializers.FloatField()
+
+
+class CourseQuizSerializer(serializers.ModelSerializer):
+    """
+    Serializer for CourseQuiz model.
+    """
+    file_url = serializers.SerializerMethodField()
+    file_size_mb = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CourseQuiz
+        fields = [
+            'id', 'title', 'description', 'file', 'file_url', 'file_type',
+            'file_size', 'file_size_mb', 'is_processed', 'processing_error',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['file_type', 'file_size', 'is_processed', 'processing_error', 'created_at', 'updated_at']
+
+    def get_file_url(self, obj):
+        """Get the full URL for the file."""
+        if obj.file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        return None
+
+    def get_file_size_mb(self, obj):
+        """Convert file size to MB for display."""
+        if obj.file_size:
+            return round(obj.file_size / (1024 * 1024), 2)
+        return None
+
+
+class CourseAssignmentFileSerializer(serializers.ModelSerializer):
+    """
+    Serializer for CourseAssignmentFile model.
+    """
+    file_url = serializers.SerializerMethodField()
+    file_size_mb = serializers.SerializerMethodField()
+    assignment = AssignmentSerializer(read_only=True)
+    assignment_extracted = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CourseAssignmentFile
+        fields = [
+            'id', 'title', 'description', 'file', 'file_url', 'file_type',
+            'file_size', 'file_size_mb', 'is_processed', 'processing_error',
+            'assignment', 'assignment_extracted', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['file_type', 'file_size', 'is_processed', 'processing_error', 'assignment', 'created_at', 'updated_at']
+
+    def get_file_url(self, obj):
+        """Get the full URL for the file."""
+        if obj.file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        return None
+
+    def get_file_size_mb(self, obj):
+        """Convert file size to MB for display."""
+        if obj.file_size:
+            return round(obj.file_size / (1024 * 1024), 2)
+        return None
+
+    def get_assignment_extracted(self, obj):
+        """Check if assignment was successfully extracted."""
+        return obj.assignment is not None
+
+
+class CourseTopicItemSerializer(serializers.ModelSerializer):
+    """
+    Serializer for CourseTopicItem model.
+    """
+    difficulty_display = serializers.CharField(source='get_difficulty_display', read_only=True)
+    
+    class Meta:
+        model = CourseTopicItem
+        fields = [
+            'id', 'title', 'description', 'difficulty', 'difficulty_display',
+            'order', 'is_completed', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+    def validate_title(self, value):
+        """Validate that title is not empty."""
+        if not value.strip():
+            raise serializers.ValidationError("Title cannot be empty.")
+        return value.strip()
+
+
+class CourseTopicSerializer(serializers.ModelSerializer):
+    """
+    Serializer for CourseTopic model.
+    """
+    syllabus_file_url = serializers.SerializerMethodField()
+    has_content = serializers.BooleanField(read_only=True)
+    content_source = serializers.CharField(read_only=True)
+    topic_count = serializers.SerializerMethodField()
+    topic_items = CourseTopicItemSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CourseTopic
+        fields = [
+            'id', 'syllabus_text', 'syllabus_file', 'syllabus_file_url',
+            'extracted_topics', 'topics_summary', 'is_processed',
+            'processing_error', 'has_content', 'content_source',
+            'topic_count', 'topic_items', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['extracted_topics', 'topics_summary', 'is_processed', 'processing_error', 'topic_items', 'created_at', 'updated_at']
+
+    def get_syllabus_file_url(self, obj):
+        """Get the full URL for the syllabus file."""
+        if obj.syllabus_file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.syllabus_file.url)
+            return obj.syllabus_file.url
+        return None
+
+    def get_topic_count(self, obj):
+        """Get the number of extracted topics."""
+        return obj.topic_items.count()
+
+    def validate(self, attrs):
+        """Validate that either syllabus_text or syllabus_file is provided."""
+        syllabus_text = attrs.get('syllabus_text', '').strip()
+        syllabus_file = attrs.get('syllabus_file')
+        
+        if not syllabus_text and not syllabus_file:
+            raise serializers.ValidationError(
+                "Either syllabus text or syllabus file must be provided."
+            )
+        return attrs
+
+
+class CourseDetailWithFilesSerializer(CourseDetailSerializer):
+    """
+    Extended course detail serializer that includes quiz files, assignment files, and topics.
+    """
+    quiz_files = CourseQuizSerializer(many=True, read_only=True)
+    assignment_files = CourseAssignmentFileSerializer(many=True, read_only=True)
+    course_topics = CourseTopicSerializer(many=True, read_only=True)
+
+    class Meta(CourseDetailSerializer.Meta):
+        fields = CourseDetailSerializer.Meta.fields + [
+            'quiz_files', 'assignment_files', 'course_topics'
+        ]

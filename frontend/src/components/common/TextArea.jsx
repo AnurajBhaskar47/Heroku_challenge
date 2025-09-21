@@ -3,7 +3,7 @@ import { forwardRef } from 'react';
 /**
  * Textarea component with label and error support
  */
-const Textarea = forwardRef(({
+const TextArea = forwardRef(({
     label,
     error,
     helperText,
@@ -81,6 +81,6 @@ const Textarea = forwardRef(({
     );
 });
 
-Textarea.displayName = 'Textarea';
+TextArea.displayName = 'Textarea';
 
-export default Textarea;
+export default TextArea;

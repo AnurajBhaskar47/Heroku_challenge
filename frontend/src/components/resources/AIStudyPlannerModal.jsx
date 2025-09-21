@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Modal from '../common/Modal';
 import Input from '../common/Input';
 import Select from '../common/Select';
-import Textarea from '../common/Textarea';
+import TextArea from '../common/TextArea';
 import Button from '../common/Button';
 
 const AIStudyPlannerModal = ({ isOpen, onClose, courses, onGenerateSuccess, loading }) => {
@@ -116,7 +116,7 @@ const AIStudyPlannerModal = ({ isOpen, onClose, courses, onGenerateSuccess, load
 
                 {/* Study Plan Request */}
                 <div>
-                    <Textarea
+                    <TextArea
                         label="Study Plan Request *"
                         value={aiPlannerForm.query}
                         onChange={(e) => setAiPlannerForm(prev => ({ ...prev, query: e.target.value }))}
