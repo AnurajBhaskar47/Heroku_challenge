@@ -13,7 +13,7 @@ import { coursesService } from '../../services/courses';
  * TopicsSection component for managing course topics and individual topic items.
  * Displays topics as individual cards with title, description, and difficulty.
  */
-const TopicsSection = ({ courseId }) => {
+const TopicsSection = ({ courseId, onTopicUpdate }) => {
     // State for course topics (syllabus content)
     const [courseTopics, setCourseTopics] = useState([]);
     const [courseTopicsLoading, setCourseTopicsLoading] = useState(true);
@@ -145,6 +145,11 @@ const TopicsSection = ({ courseId }) => {
             await loadCourseTopics();
             await loadTopicItems();
             
+            // Notify parent component of data update
+            if (onTopicUpdate) {
+                onTopicUpdate();
+            }
+            
             // Close modal and reset form
             setSyllabusModalOpen(false);
             setEditingTopic(null);
@@ -172,6 +177,12 @@ const TopicsSection = ({ courseId }) => {
             }
 
             await loadTopicItems();
+            
+            // Notify parent component of data update
+            if (onTopicUpdate) {
+                onTopicUpdate();
+            }
+            
             setTopicItemModalOpen(false);
             setEditingTopicItem(null);
             setTopicItemForm({ title: '', description: '', difficulty: 'intermediate' });
@@ -188,9 +199,25 @@ const TopicsSection = ({ courseId }) => {
     const handleToggleCompletion = async (topicItem) => {
         try {
             await coursesService.toggleTopicItemCompletion(courseId, topicItem.id);
-            await loadTopicItems();
+            
+            // Update the local state immediately for better UX
+            setTopicItems(prevItems => 
+                prevItems.map(item => 
+                    item.id === topicItem.id 
+                        ? { ...item, is_completed: !item.is_completed }
+                        : item
+                )
+            );
+            
+            // Notify parent component of data update (for ProgressTracker)
+            console.log('🔔 TopicsSection: Notifying parent of topic update, onTopicUpdate:', onTopicUpdate);
+            if (onTopicUpdate) {
+                onTopicUpdate();
+            }
         } catch (error) {
             console.error('Error toggling topic completion:', error);
+            // Reload on error to ensure consistency
+            await loadTopicItems();
         }
     };
 
@@ -200,10 +227,19 @@ const TopicsSection = ({ courseId }) => {
     const handleDeleteTopicItem = async (topicItem) => {
         try {
             await coursesService.deleteCourseTopicItem(courseId, topicItem.id);
-            await loadTopicItems();
+            
+            // Remove item from local state immediately
+            setTopicItems(prevItems => prevItems.filter(item => item.id !== topicItem.id));
             setDeleteConfirm({ isOpen: false, topic: null, topicItem: null });
+            
+            // Notify parent component of data update
+            if (onTopicUpdate) {
+                onTopicUpdate();
+            }
         } catch (error) {
             console.error('Error deleting topic item:', error);
+            // Reload on error to ensure consistency
+            await loadTopicItems();
         }
     };
 
@@ -216,6 +252,11 @@ const TopicsSection = ({ courseId }) => {
             await loadCourseTopics();
             await loadTopicItems(); // Reload topic items as they might be deleted too
             setDeleteConfirm({ isOpen: false, topic: null, topicItem: null });
+            
+            // Notify parent component of data update
+            if (onTopicUpdate) {
+                onTopicUpdate();
+            }
         } catch (error) {
             console.error('Error deleting syllabus:', error);
         }
@@ -420,7 +461,7 @@ const TopicsSection = ({ courseId }) => {
                                                     type="checkbox"
                                                     checked={item.is_completed}
                                                     onChange={() => handleToggleCompletion(item)}
-                                                    className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out rounded focus:ring-blue-500 flex-shrink-0"
+                                                    className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out rounded focus:ring-blue-500 flex-shrink-0 cursor-pointer"
                                                 />
                                                 <h4 className={`font-medium truncate ${
                                                     item.is_completed 

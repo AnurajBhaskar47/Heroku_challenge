@@ -2,7 +2,7 @@
 Views for the courses app.
 """
 
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -362,25 +362,36 @@ class CourseQuizViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Create quiz file for the specified course with RAG processing."""
         course = self.get_course()
-        quiz = serializer.save(course=course)
         
-        # Set file metadata
-        if quiz.file:
-            quiz.file_size = quiz.file.size
-            quiz.file_type = os.path.splitext(quiz.file.name)[1].lower().lstrip('.')
-            quiz.save()
+        # Get the uploaded file from the request
+        uploaded_file = self.request.FILES.get('file')
+        if not uploaded_file:
+            raise serializers.ValidationError({'file': 'This field is required.'})
         
-        # Process through RAG pipeline
-        self._process_quiz_with_rag(quiz)
+        # Set file metadata without saving the file
+        file_size = uploaded_file.size
+        file_type = os.path.splitext(uploaded_file.name)[1].lower().lstrip('.')
+        original_filename = uploaded_file.name
+        
+        # Save quiz with metadata
+        quiz = serializer.save(
+            course=course,
+            file_size=file_size,
+            file_type=file_type,
+            original_filename=original_filename
+        )
+        
+        # Process through RAG pipeline with the uploaded file
+        self._process_quiz_with_rag(quiz, uploaded_file)
 
-    def _process_quiz_with_rag(self, quiz):
+    def _process_quiz_with_rag(self, quiz, uploaded_file):
         """Process quiz file through RAG pipeline."""
         try:
             # Import RAG extension (which auto-extends RAGPipeline)
             from apps.resources.course_rag_extension import CourseRAGExtension
             
-            # Process the quiz file
-            CourseRAGExtension.process_course_quiz(quiz)
+            # Process the quiz file directly from memory
+            CourseRAGExtension.process_course_quiz_from_file(quiz, uploaded_file)
             logger.info(f"Successfully processed quiz {quiz.id} through RAG pipeline")
             
         except ImportError:
@@ -444,18 +455,29 @@ class CourseAssignmentFileViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Create assignment file for the specified course with RAG processing."""
         course = self.get_course()
-        assignment_file = serializer.save(course=course)
         
-        # Set file metadata
-        if assignment_file.file:
-            assignment_file.file_size = assignment_file.file.size
-            assignment_file.file_type = os.path.splitext(assignment_file.file.name)[1].lower().lstrip('.')
-            assignment_file.save()
+        # Get the uploaded file from the request
+        uploaded_file = self.request.FILES.get('file')
+        if not uploaded_file:
+            raise serializers.ValidationError({'file': 'This field is required.'})
         
-        # Process through RAG pipeline
-        self._process_assignment_with_rag(assignment_file)
+        # Set file metadata without saving the file
+        file_size = uploaded_file.size
+        file_type = os.path.splitext(uploaded_file.name)[1].lower().lstrip('.')
+        original_filename = uploaded_file.name
+        
+        # Save assignment file with metadata
+        assignment_file = serializer.save(
+            course=course,
+            file_size=file_size,
+            file_type=file_type,
+            original_filename=original_filename
+        )
+        
+        # Process through RAG pipeline with the uploaded file
+        self._process_assignment_with_rag(assignment_file, uploaded_file)
 
-    def _process_assignment_with_rag(self, assignment_file):
+    def _process_assignment_with_rag(self, assignment_file, uploaded_file):
         """Process assignment file through RAG pipeline."""
         if not RAG_AVAILABLE or CourseRAGExtension is None:
             logger.warning("RAG pipeline not available - assignment file processing skipped")
@@ -464,8 +486,8 @@ class CourseAssignmentFileViewSet(viewsets.ModelViewSet):
             return
             
         try:
-            # Process the assignment file using pre-imported CourseRAGExtension
-            CourseRAGExtension.process_course_assignment(assignment_file)
+            # Process the assignment file directly from memory
+            CourseRAGExtension.process_course_assignment_from_file(assignment_file, uploaded_file)
             logger.info(f"Successfully processed assignment file {assignment_file.id} through RAG pipeline")
             
         except Exception as e:

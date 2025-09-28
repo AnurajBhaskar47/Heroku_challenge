@@ -110,7 +110,7 @@ const ResourceEditModal = ({ isOpen, onClose, resource, courses, onUpdateSuccess
 
                 {/* Title */}
                 <Input
-                    label="Title *"
+                    label="Title"
                     value={editForm.title}
                     onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="Enter resource title"
@@ -128,7 +128,7 @@ const ResourceEditModal = ({ isOpen, onClose, resource, courses, onUpdateSuccess
 
                 {/* Resource Type */}
                 <Select
-                    label="Resource Type *"
+                    label="Resource Type"
                     value={editForm.resource_type}
                     onChange={(e) => setEditForm(prev => ({ ...prev, resource_type: e.target.value }))}
                     options={resourceTypeOptions}

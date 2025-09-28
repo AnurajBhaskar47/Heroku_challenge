@@ -84,6 +84,49 @@ class DocumentProcessor:
             return ""
     
     @staticmethod
+    def extract_text_from_uploaded_file(uploaded_file, file_type: str) -> str:
+        """Extract text content from an uploaded file object."""
+        try:
+            if file_type.lower() == 'pdf':
+                import PyPDF2
+                import io
+                
+                # Create a file-like object from the uploaded file
+                file_content = io.BytesIO(uploaded_file.read())
+                pdf_reader = PyPDF2.PdfReader(file_content)
+                text = ""
+                for page in pdf_reader.pages:
+                    text += page.extract_text()
+                return text
+            
+            elif file_type.lower() in ['docx', 'doc']:
+                import docx
+                import io
+                
+                # Create a file-like object from the uploaded file
+                file_content = io.BytesIO(uploaded_file.read())
+                doc = docx.Document(file_content)
+                text = ""
+                for paragraph in doc.paragraphs:
+                    text += paragraph.text + "\n"
+                return text
+            
+            elif file_type.lower() == 'txt':
+                # Read text file content
+                content = uploaded_file.read()
+                if isinstance(content, bytes):
+                    content = content.decode('utf-8')
+                return content
+            
+            else:
+                logger.warning(f"Unsupported file type: {file_type}")
+                return ""
+                
+        except Exception as e:
+            logger.error(f"Error extracting text from uploaded file: {str(e)}")
+            return ""
+    
+    @staticmethod
     def intelligent_chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[Dict[str, Any]]:
         """
         Intelligently chunk text based on semantic boundaries.

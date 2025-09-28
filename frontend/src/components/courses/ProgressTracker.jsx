@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import Card, { CardHeader, CardTitle, CardBody } from '../common/Card';
 import Button from '../common/Button';
 import ConfirmationModal from '../common/ConfirmationModal';
-import DropdownMenu from '../common/DropdownMenu';
 import ExamTimeline from './ExamTimeline';
 import { coursesService } from '../../services/courses';
 
 /**
  * Progress Tracker component for displaying course progress and syllabus sources
  */
-const ProgressTracker = ({ courseId }) => {
+const ProgressTracker = ({ courseId, onDataUpdate }) => {
     const [assignments, setAssignments] = useState([]);
     const [topicItems, setTopicItems] = useState([]);
     const [courseTopics, setCourseTopics] = useState([]);
@@ -17,13 +16,8 @@ const ProgressTracker = ({ courseId }) => {
     const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, topic: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    useEffect(() => {
-        if (courseId) {
-            loadProgressData();
-        }
-    }, [courseId]);
-
     const loadProgressData = async () => {
+        console.log('🔄 ProgressTracker: loadProgressData called for courseId:', courseId);
         try {
             setLoading(true);
             const [assignmentsData, topicItemsData, courseTopicsData] = await Promise.all([
@@ -32,6 +26,8 @@ const ProgressTracker = ({ courseId }) => {
                 coursesService.getCourseTopics(courseId)
             ]);
 
+            console.log('📊 ProgressTracker: Data loaded - assignments:', assignmentsData?.results?.length || assignmentsData?.length, 'topics:', topicItemsData?.results?.length || topicItemsData?.length);
+            
             setAssignments(assignmentsData.results || assignmentsData || []);
             setTopicItems(topicItemsData.results || topicItemsData || []);
             setCourseTopics(courseTopicsData.results || courseTopicsData || []);
@@ -41,6 +37,29 @@ const ProgressTracker = ({ courseId }) => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (courseId) {
+            loadProgressData();
+        }
+    }, [courseId]);
+
+    // Expose refresh function to parent component
+    useEffect(() => {
+        console.log('🔗 ProgressTracker: Setting up refresh function, onDataUpdate:', onDataUpdate);
+        
+        // Create a wrapper function to ensure we pass a function, not a promise
+        const refreshFunction = () => {
+            console.log('🔄 ProgressTracker: Refresh function called');
+            return loadProgressData();
+        };
+        
+        console.log('🔗 ProgressTracker: refreshFunction type:', typeof refreshFunction, refreshFunction);
+        if (onDataUpdate) {
+            onDataUpdate(refreshFunction);
+            console.log('✅ ProgressTracker: Refresh function exposed to parent');
+        }
+    }, [onDataUpdate]);
 
     // Calculate progress
     const completedAssignments = assignments.filter(a => a.status === 'completed').length;
@@ -52,19 +71,13 @@ const ProgressTracker = ({ courseId }) => {
     const totalItems = totalAssignments + totalTopics;
     const completedItems = completedAssignments + completedTopics;
     const progressPercentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+    
+    console.log('📈 ProgressTracker: Progress calculated -', {
+        completedTopics, totalTopics, 
+        completedAssignments, totalAssignments,
+        progressPercentage
+    });
 
-    // Handle syllabus viewing
-    const handleViewSyllabus = (topic) => {
-        if (topic.content_source === 'file' && topic.syllabus_file_url) {
-            // Open file in new tab
-            window.open(topic.syllabus_file_url, '_blank');
-        } else if (topic.syllabus_text) {
-            // Show text content in alert (you can replace this with a modal)
-            alert(`Syllabus Content:\n\n${topic.syllabus_text}`);
-        } else {
-            alert('No syllabus content available to view.');
-        }
-    };
 
     const handleDeleteSyllabus = async () => {
         if (!deleteConfirm.topic) return;
@@ -171,35 +184,20 @@ const ProgressTracker = ({ courseId }) => {
                         {courseTopics.length > 0 ? (
                             <div className="space-y-2">
                                 {courseTopics.map((topic) => {
-                                    // Create dropdown menu items for each syllabus source
-                                    const menuItems = [
-                                        {
-                                            label: 'View',
-                                            icon: (
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                            ),
-                                            onClick: (e) => {
-                                                e.stopPropagation();
-                                                handleViewSyllabus(topic);
-                                            }
-                                        },
-                                        {
-                                            label: 'Delete',
-                                            icon: (
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            ),
-                                            className: 'text-red-700 hover:bg-red-50 hover:text-red-900',
-                                            onClick: (e) => {
-                                                e.stopPropagation();
-                                                setDeleteConfirm({ isOpen: true, topic });
-                                            }
-                                        }
-                                    ];
+                                    // Determine display text based on content source
+                                    let displayText = '';
+                                    if (topic.content_source === 'file') {
+                                        // For file sources, show the filename or a generic label
+                                        displayText = topic.syllabus_file_url?.split('/').pop() || 
+                                                    topic.syllabus_file?.split('/').pop() || 
+                                                    'Syllabus File';
+                                    } else if (topic.content_source === 'text') {
+                                        // For text sources, show character count
+                                        const charCount = topic.syllabus_text?.length || 0;
+                                        displayText = `Text (${charCount} chars)`;
+                                    } else {
+                                        displayText = 'Syllabus Content';
+                                    }
 
                                     return (
                                         <div key={topic.id} className="flex items-center justify-between text-xs text-gray-600 bg-gray-50 rounded p-2">
@@ -214,18 +212,23 @@ const ProgressTracker = ({ courseId }) => {
                                                     </svg>
                                                 )}
                                                 <span className="truncate text-xs leading-tight">
-                                                    {topic.content_source === 'file' 
-                                                        ? (topic.syllabus_file_url?.split('/').pop() || 'Syllabus File')
-                                                        : `Text (${topic.syllabus_text?.length || 0} chars)`
-                                                    }
+                                                    {displayText}
                                                 </span>
                                             </div>
                                             
-                                            {/* Dropdown menu */}
-                                            <DropdownMenu
-                                                items={menuItems}
-                                                className="flex-shrink-0"
-                                            />
+                                            {/* Direct Delete Button */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setDeleteConfirm({ isOpen: true, topic });
+                                                }}
+                                                className="flex-shrink-0 p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                                                title="Delete syllabus content"
+                                            >
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
                                         </div>
                                     );
                                 })}

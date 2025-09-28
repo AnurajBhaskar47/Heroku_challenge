@@ -6,7 +6,6 @@ import { resourcesService } from '../../services/resources.js';
 import { getErrorMessage } from '../../services/api.js';
 import ResourceCard from '../resources/ResourceCard.jsx';
 import ResourceUploadModal from '../resources/ResourceUploadModal.jsx';
-import ResourceDetailsModal from '../resources/ResourceDetailsModal.jsx';
 import ResourceEditModal from '../resources/ResourceEditModal.jsx';
 import DeleteResourceModal from '../resources/DeleteResourceModal.jsx';
 
@@ -21,7 +20,6 @@ const ResourcesSection = ({ courseId }) => {
     
     // Modal states
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
-    const [viewResourceModalOpen, setViewResourceModalOpen] = useState(false);
     const [editResourceModalOpen, setEditResourceModalOpen] = useState(false);
     const [deleteResourceModalOpen, setDeleteResourceModalOpen] = useState(false);
     const [selectedResource, setSelectedResource] = useState(null);
@@ -48,10 +46,6 @@ const ResourcesSection = ({ courseId }) => {
     }, [courseId]);
 
     // Handle resource actions
-    const handleViewResource = (resource) => {
-        setSelectedResource(resource);
-        setViewResourceModalOpen(true);
-    };
 
     const handleEditResource = (resource) => {
         setSelectedResource(resource);
@@ -126,7 +120,6 @@ const ResourcesSection = ({ courseId }) => {
                                 <div key={resource.id} className="scale-95 origin-top-left">
                                     <ResourceCard
                                         resource={resource}
-                                        onView={handleViewResource}
                                         onEdit={handleEditResource}
                                         onDelete={handleDeleteResource}
                                     />
@@ -146,12 +139,6 @@ const ResourcesSection = ({ courseId }) => {
                 preSelectedCourseId={courseId}
             />
 
-            {/* View Modal */}
-            <ResourceDetailsModal
-                isOpen={viewResourceModalOpen}
-                onClose={() => setViewResourceModalOpen(false)}
-                resource={selectedResource}
-            />
 
             {/* Edit Modal */}
             <ResourceEditModal

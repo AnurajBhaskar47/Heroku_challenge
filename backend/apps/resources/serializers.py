@@ -12,6 +12,7 @@ User = get_user_model()
 class ResourceSerializer(serializers.ModelSerializer):
     """
     Serializer for Resource model.
+    Note: Files are processed directly without storage for Heroku compatibility.
     """
 
     # Read-only computed fields
@@ -21,11 +22,12 @@ class ResourceSerializer(serializers.ModelSerializer):
     is_external_resource = serializers.BooleanField(read_only=True)
     added_by_username = serializers.CharField(
         source='added_by_user.username', read_only=True)
+    file = serializers.FileField(write_only=True, required=False)
 
     class Meta:
         model = Resource
         fields = [
-            'id', 'title', 'description', 'url', 'file', 'resource_type',
+            'id', 'title', 'description', 'url', 'file', 'original_filename', 'resource_type',
             'subject', 'topics', 'topics_list', 'difficulty_level',
             'difficulty_display', 'estimated_time', 'rating',
             'display_rating', 'view_count', 'is_verified',

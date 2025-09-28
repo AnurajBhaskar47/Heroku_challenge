@@ -130,6 +130,89 @@ class CourseRAGExtension:
             quiz.save()
 
     @staticmethod
+    def process_course_quiz_from_file(quiz, uploaded_file):
+        """
+        Process a course quiz from an uploaded file object directly (no file storage).
+        
+        Args:
+            quiz: CourseQuiz instance 
+            uploaded_file: Django UploadedFile object
+        """
+        from .rag_models import Document, DocumentChunk, KnowledgeNode
+        from .rag_pipeline import DocumentProcessor, EmbeddingGenerator, get_openai_client
+        
+        try:
+            # Extract text from the uploaded file
+            file_type = quiz.file_type or 'pdf'
+            content = DocumentProcessor.extract_text_from_uploaded_file(uploaded_file, file_type)
+            if not content or len(content.strip()) < 100:
+                quiz.processing_error = "Insufficient content extracted from file"
+                quiz.save()
+                return
+            
+            # Create a Document entry for the quiz
+            document = Document.objects.create(
+                title=f"Quiz: {quiz.title}",
+                content=content[:10000],  # Store first 10k chars
+                document_type='course_quiz',
+                source_url='',  # No file URL since we're not storing files
+                metadata={
+                    'course_id': quiz.course.id,
+                    'course_name': quiz.course.name,
+                    'quiz_id': quiz.id,
+                    'file_type': quiz.file_type,
+                    'original_filename': quiz.original_filename
+                }
+            )
+            
+            # Chunk the content
+            chunks = DocumentProcessor.intelligent_chunk_text(content, chunk_size=1500)
+            
+            # Process each chunk
+            for i, chunk_data in enumerate(chunks):
+                chunk_text = chunk_data['content']
+                if len(chunk_text.strip()) < 50:
+                    continue
+                    
+                # Generate embedding for the chunk
+                try:
+                    embedding = EmbeddingGenerator.generate_embedding(chunk_text)
+                    if not embedding:
+                        continue
+                    
+                    # Create DocumentChunk
+                    DocumentChunk.objects.create(
+                        document=document,
+                        content=chunk_text,
+                        chunk_index=i,
+                        start_char=chunk_data.get('start_char', 0),
+                        end_char=chunk_data.get('end_char', len(chunk_text)),
+                        embedding=embedding,
+                        metadata={
+                            'course_id': quiz.course.id,
+                            'quiz_id': quiz.id,
+                            'chunk_type': 'quiz_content'
+                        }
+                    )
+                    
+                except Exception as e:
+                    logger.error(f"Error processing chunk {i} for quiz {quiz.id}: {str(e)}")
+                    continue
+            
+            # Mark as processed
+            quiz.is_processed = True
+            quiz.processing_error = ""
+            quiz.save()
+            
+            logger.info(f"Successfully processed quiz {quiz.id} with {len(chunks)} chunks")
+            
+        except Exception as e:
+            logger.error(f"Error processing quiz {quiz.id}: {str(e)}")
+            quiz.processing_error = str(e)
+            quiz.is_processed = False
+            quiz.save()
+
+    @staticmethod
     def process_course_assignment(assignment_file):
         """
         Process a course assignment file through the RAG pipeline and create Assignment entry.
@@ -217,6 +300,96 @@ class CourseRAGExtension:
                     
                 except Exception as e:
                     logger.error(f"Error processing chunk {i} of assignment {assignment_file.id}: {str(e)}")
+                    continue
+            
+            # Mark as processed
+            assignment_file.is_processed = True
+            assignment_file.processing_error = ""
+            assignment_file.save()
+            
+            logger.info(f"Successfully processed assignment file {assignment_file.id} with {len(chunks)} chunks")
+            
+        except Exception as e:
+            logger.error(f"Error processing assignment file {assignment_file.id}: {str(e)}")
+            assignment_file.processing_error = str(e)
+            assignment_file.is_processed = False
+            assignment_file.save()
+
+    @staticmethod
+    def process_course_assignment_from_file(assignment_file, uploaded_file):
+        """
+        Process a course assignment from an uploaded file object directly (no file storage).
+        
+        Args:
+            assignment_file: CourseAssignmentFile instance
+            uploaded_file: Django UploadedFile object
+        """
+        from .rag_models import Document, DocumentChunk, KnowledgeNode
+        from .rag_pipeline import DocumentProcessor, EmbeddingGenerator, get_openai_client
+        
+        try:
+            # Extract text from the uploaded file
+            file_type = assignment_file.file_type or 'pdf'
+            content = DocumentProcessor.extract_text_from_uploaded_file(uploaded_file, file_type)
+            if not content or len(content.strip()) < 100:
+                assignment_file.processing_error = "Insufficient content extracted from file"
+                assignment_file.save()
+                return
+
+            # Extract assignment details using AI
+            assignment_details = CourseRAGExtension._extract_assignment_details(content)
+            
+            # Create Assignment entry if details were successfully extracted
+            if assignment_details and not assignment_file.assignment:
+                CourseRAGExtension._create_assignment_from_details(assignment_file, assignment_details)
+            
+            # Create a Document entry for the assignment
+            document = Document.objects.create(
+                title=f"Assignment: {assignment_file.title}",
+                content=content[:10000],  # Store first 10k chars
+                document_type='course_assignment',
+                source_url='',  # No file URL since we're not storing files
+                metadata={
+                    'course_id': assignment_file.course.id,
+                    'course_name': assignment_file.course.name,
+                    'assignment_file_id': assignment_file.id,
+                    'file_type': assignment_file.file_type,
+                    'original_filename': assignment_file.original_filename
+                }
+            )
+            
+            # Chunk the content
+            chunks = DocumentProcessor.intelligent_chunk_text(content, chunk_size=1500)
+            
+            # Process each chunk
+            for i, chunk_data in enumerate(chunks):
+                chunk_text = chunk_data['content']
+                if len(chunk_text.strip()) < 50:
+                    continue
+                    
+                # Generate embedding for the chunk
+                try:
+                    embedding = EmbeddingGenerator.generate_embedding(chunk_text)
+                    if not embedding:
+                        continue
+                    
+                    # Create DocumentChunk
+                    DocumentChunk.objects.create(
+                        document=document,
+                        content=chunk_text,
+                        chunk_index=i,
+                        start_char=chunk_data.get('start_char', 0),
+                        end_char=chunk_data.get('end_char', len(chunk_text)),
+                        embedding=embedding,
+                        metadata={
+                            'course_id': assignment_file.course.id,
+                            'assignment_file_id': assignment_file.id,
+                            'chunk_type': 'assignment_content'
+                        }
+                    )
+                    
+                except Exception as e:
+                    logger.error(f"Error processing chunk {i} for assignment file {assignment_file.id}: {str(e)}")
                     continue
             
             # Mark as processed

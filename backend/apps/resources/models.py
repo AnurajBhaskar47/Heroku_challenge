@@ -54,12 +54,11 @@ class Resource(models.Model):
         help_text="Resource URL"
     )
 
-    # File upload support
-    file = models.FileField(
-        upload_to='resources/files/',
+    # Store original filename for reference (files processed directly without storage)
+    original_filename = models.CharField(
+        max_length=255,
         blank=True,
-        null=True,
-        help_text="Uploaded file (PDF, DOCX, etc.)"
+        help_text="Original filename of uploaded file"
     )
 
     resource_type = models.CharField(
@@ -202,6 +201,7 @@ class Resource(models.Model):
         """Return the URL for this resource."""
         return self.url or reverse('admin:resources_resource_change', args=[self.pk])
 
+    @property
     def is_external_resource(self):
         """Check if this resource has an external URL."""
         return bool(self.url)

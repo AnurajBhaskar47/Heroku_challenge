@@ -284,8 +284,9 @@ class Assignment(models.Model):
 
 class CourseQuiz(models.Model):
     """
-    Model for storing quiz files that can be uploaded to a course.
+    Model for storing quiz content that can be uploaded to a course.
     These are processed through the RAG pipeline for context.
+    Note: Files are processed directly without storage for Heroku compatibility.
     """
 
     course = models.ForeignKey(
@@ -305,9 +306,11 @@ class CourseQuiz(models.Model):
         help_text="Quiz description or notes"
     )
 
-    file = models.FileField(
-        upload_to='courses/quizzes/',
-        help_text="Quiz file (PDF, DOCX, TXT, etc.)"
+    # Store original filename for reference
+    original_filename = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Original filename of uploaded file"
     )
 
     file_type = models.CharField(
@@ -350,9 +353,10 @@ class CourseQuiz(models.Model):
 
 class CourseAssignmentFile(models.Model):
     """
-    Model for storing assignment files that can be uploaded to a course.
+    Model for storing assignment content that can be uploaded to a course.
     These are processed through the RAG pipeline for context and automatically
     create Assignment entries based on extracted information.
+    Note: Files are processed directly without storage for Heroku compatibility.
     """
 
     course = models.ForeignKey(
@@ -382,9 +386,11 @@ class CourseAssignmentFile(models.Model):
         help_text="Assignment description or instructions"
     )
 
-    file = models.FileField(
-        upload_to='courses/assignments/',
-        help_text="Assignment file (PDF, DOCX, TXT, etc.)"
+    # Store original filename for reference
+    original_filename = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Original filename of uploaded file"
     )
 
     file_type = models.CharField(

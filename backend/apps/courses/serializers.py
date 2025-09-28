@@ -170,27 +170,19 @@ class AssignmentStatsSerializer(serializers.Serializer):
 class CourseQuizSerializer(serializers.ModelSerializer):
     """
     Serializer for CourseQuiz model.
+    Note: Files are processed directly without storage for Heroku compatibility.
     """
-    file_url = serializers.SerializerMethodField()
     file_size_mb = serializers.SerializerMethodField()
+    file = serializers.FileField(write_only=True, required=True)
 
     class Meta:
         model = CourseQuiz
         fields = [
-            'id', 'title', 'description', 'file', 'file_url', 'file_type',
+            'id', 'title', 'description', 'file', 'original_filename', 'file_type',
             'file_size', 'file_size_mb', 'is_processed', 'processing_error',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['file_type', 'file_size', 'is_processed', 'processing_error', 'created_at', 'updated_at']
-
-    def get_file_url(self, obj):
-        """Get the full URL for the file."""
-        if obj.file:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.file.url)
-            return obj.file.url
-        return None
+        read_only_fields = ['original_filename', 'file_type', 'file_size', 'is_processed', 'processing_error', 'created_at', 'updated_at']
 
     def get_file_size_mb(self, obj):
         """Convert file size to MB for display."""
@@ -202,29 +194,21 @@ class CourseQuizSerializer(serializers.ModelSerializer):
 class CourseAssignmentFileSerializer(serializers.ModelSerializer):
     """
     Serializer for CourseAssignmentFile model.
+    Note: Files are processed directly without storage for Heroku compatibility.
     """
-    file_url = serializers.SerializerMethodField()
     file_size_mb = serializers.SerializerMethodField()
     assignment = AssignmentSerializer(read_only=True)
     assignment_extracted = serializers.SerializerMethodField()
+    file = serializers.FileField(write_only=True, required=True)
 
     class Meta:
         model = CourseAssignmentFile
         fields = [
-            'id', 'title', 'description', 'file', 'file_url', 'file_type',
+            'id', 'title', 'description', 'file', 'original_filename', 'file_type',
             'file_size', 'file_size_mb', 'is_processed', 'processing_error',
             'assignment', 'assignment_extracted', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['file_type', 'file_size', 'is_processed', 'processing_error', 'assignment', 'created_at', 'updated_at']
-
-    def get_file_url(self, obj):
-        """Get the full URL for the file."""
-        if obj.file:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.file.url)
-            return obj.file.url
-        return None
+        read_only_fields = ['original_filename', 'file_type', 'file_size', 'is_processed', 'processing_error', 'assignment', 'created_at', 'updated_at']
 
     def get_file_size_mb(self, obj):
         """Convert file size to MB for display."""

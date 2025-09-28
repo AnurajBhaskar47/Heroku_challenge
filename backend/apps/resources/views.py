@@ -3,6 +3,7 @@ Views for the resources app.
 """
 
 import logging
+import os
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -80,25 +81,105 @@ class ResourceViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Create a new resource and process it through RAG pipeline if it's a file."""
-        response = super().create(request, *args, **kwargs)
+        # Get the uploaded file from the request
+        uploaded_file = request.FILES.get('file')
         
-        if response.status_code == 201:
-            # Get the created resource
-            resource = Resource.objects.get(id=response.data['id'])
+        # Create the resource without the file field
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Set file metadata if file was uploaded
+        if uploaded_file:
+            file_size = uploaded_file.size
+            file_type = os.path.splitext(uploaded_file.name)[1].lower().lstrip('.')
+            original_filename = uploaded_file.name
             
-            # Process through RAG pipeline if it's a file upload
-            if resource.file and resource.resource_type in ['pdf', 'docx', 'txt']:
+            # Save resource with metadata
+            resource = serializer.save(
+                added_by_user=request.user,
+                original_filename=original_filename,
+                resource_type=file_type if file_type in ['pdf', 'docx', 'txt'] else serializer.validated_data.get('resource_type', 'other')
+            )
+            
+            # Process through RAG pipeline if it's a supported file type
+            if file_type in ['pdf', 'docx', 'txt']:
                 try:
-                    from .rag_pipeline import RAGPipeline
-                    success = RAGPipeline.process_uploaded_resource(resource)
-                    if success:
-                        logger.info(f"Successfully processed resource {resource.id} through RAG pipeline")
-                    else:
-                        logger.warning(f"Failed to process resource {resource.id} through RAG pipeline")
+                    self._process_resource_with_rag(resource, uploaded_file)
                 except Exception as e:
                     logger.error(f"Error processing resource {resource.id} through RAG: {str(e)}")
+        else:
+            # No file uploaded, just create the resource
+            resource = serializer.save(added_by_user=request.user)
         
-        return response
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def _process_resource_with_rag(self, resource, uploaded_file):
+        """Process resource through RAG pipeline from uploaded file."""
+        try:
+            from .rag_models import Document, DocumentChunk
+            from .rag_pipeline import DocumentProcessor, EmbeddingGenerator
+            
+            # Extract text from the uploaded file
+            file_type = resource.resource_type or 'pdf'
+            content = DocumentProcessor.extract_text_from_uploaded_file(uploaded_file, file_type)
+            if not content or len(content.strip()) < 100:
+                logger.warning(f"Insufficient content extracted from resource {resource.id}")
+                return
+            
+            # Create a Document entry for the resource
+            document = Document.objects.create(
+                title=f"Resource: {resource.title}",
+                content=content[:10000],  # Store first 10k chars
+                document_type='resource',
+                source_url='',  # No file URL since we're not storing files
+                metadata={
+                    'resource_id': resource.id,
+                    'resource_type': resource.resource_type,
+                    'course_id': resource.course.id if resource.course else None,
+                    'original_filename': resource.original_filename
+                }
+            )
+            
+            # Chunk the content
+            chunks = DocumentProcessor.intelligent_chunk_text(content, chunk_size=1500)
+            
+            # Process each chunk
+            for i, chunk_data in enumerate(chunks):
+                chunk_text = chunk_data['content']
+                if len(chunk_text.strip()) < 50:
+                    continue
+                    
+                # Generate embedding for the chunk
+                try:
+                    embedding = EmbeddingGenerator.generate_embedding(chunk_text)
+                    if not embedding:
+                        continue
+                    
+                    # Create DocumentChunk
+                    DocumentChunk.objects.create(
+                        document=document,
+                        content=chunk_text,
+                        chunk_index=i,
+                        start_char=chunk_data.get('start_char', 0),
+                        end_char=chunk_data.get('end_char', len(chunk_text)),
+                        embedding=embedding,
+                        metadata={
+                            'resource_id': resource.id,
+                            'course_id': resource.course.id if resource.course else None,
+                            'chunk_type': 'resource_content'
+                        }
+                    )
+                    
+                except Exception as e:
+                    logger.error(f"Error processing chunk {i} for resource {resource.id}: {str(e)}")
+                    continue
+            
+            logger.info(f"Successfully processed resource {resource.id} with {len(chunks)} chunks")
+            
+        except Exception as e:
+            logger.error(f"Error processing resource {resource.id} through RAG: {str(e)}")
+            raise
 
     def retrieve(self, request, *args, **kwargs):
         """Retrieve resource and increment view count."""
