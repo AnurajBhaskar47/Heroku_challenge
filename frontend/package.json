@@ -8,6 +8,7 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
+        "start": "node server.js",
         "preview": "vite preview",
         "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
     },
@@ -15,7 +16,9 @@
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-router-dom": "^6.26.1",
-        "axios": "^1.7.7"
+        "axios": "^1.7.7",
+        "express": "^4.18.2",
+        "http-proxy-middleware": "^2.0.6"
     },
     "devDependencies": {
         "@types/react": "^18.2.66",
@@ -31,6 +34,7 @@
         "vite": "^5.2.0"
     },
     "engines": {
-        "node": ">=18.0.0"
+        "node": ">=18.0.0",
+        "npm": ">=8.0.0"
     }
 }

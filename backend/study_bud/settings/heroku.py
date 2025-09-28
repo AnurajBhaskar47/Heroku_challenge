@@ -129,10 +129,11 @@ LOGGING = {
     },
 }
 
-# AI Configuration - Production
-GOOGLE_GEMINI_API_KEY = config('GOOGLE_GEMINI_API_KEY')
+# AI Configuration - Production (OpenAI)
+OPENAI_API_KEY = config('OPENAI_API_KEY')
 USE_VECTOR_SEARCH = config('USE_VECTOR_SEARCH', default=False, cast=bool)
 EMBEDDING_SERVICE = config('EMBEDDING_SERVICE', default='heroku')
+AI_FALLBACK_ENABLED = config('AI_FALLBACK_ENABLED', default=True, cast=bool)
 
 # Rate limiting and throttling
 REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = [

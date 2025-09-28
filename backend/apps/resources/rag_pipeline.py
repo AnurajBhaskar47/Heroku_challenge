@@ -426,11 +426,12 @@ class RAGRetriever:
             # Get course information
             course = Course.objects.get(id=course_id)
             
-            # Get relevant document chunks
+            # Get relevant document chunks with lower threshold for better recall
             relevant_chunks = RAGRetriever.retrieve_relevant_chunks(
                 query_embedding=query_embedding,
                 course_id=course_id,
-                top_k=15
+                top_k=15,
+                similarity_threshold=0.3  # Lower threshold for better recall
             )
             
             # Get knowledge graph information

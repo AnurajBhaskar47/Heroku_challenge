@@ -3,6 +3,7 @@ Views for the ai_assistant app.
 """
 
 import time
+import logging
 from datetime import datetime
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
@@ -14,6 +15,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResp
 from apps.courses.models import Course
 from utils.ai_client import AIClient
 from utils.enhanced_ai_client import EnhancedAIClient
+from utils.security_guards import ChatSecurityGuard, RateLimiter
 from .serializers import (
     ExplainRequestSerializer,
     ExplainResponseSerializer,
@@ -27,6 +29,9 @@ from .serializers import (
     ChatResponseSerializer,
     AIServiceStatusSerializer
 )
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 @extend_schema_view(
@@ -325,57 +330,183 @@ class AIAssistantViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['post'])
     def chat(self, request):
-        """Chat with AI assistant."""
-        serializer = ChatRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        message = serializer.validated_data['message']
-        context = serializer.validated_data.get('context', {})
-        course_id = serializer.validated_data.get('course_id')
-
-        start_time = time.time()
-
+        """Chat with AI assistant using RAG pipeline for enhanced context."""
         try:
-            # Add user context
-            user_context = {
+            # Rate limiting check
+            if not RateLimiter.is_allowed(request.user.id, max_requests=30, window_minutes=60):
+                return Response(
+                    {
+                        'error': 'Rate limit exceeded',
+                        'details': 'Too many requests. Please wait before sending more messages.',
+                        'retry_after': 3600  # 1 hour
+                    },
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                )
+            
+            serializer = ChatRequestSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            message = serializer.validated_data['message']
+            context = serializer.validated_data.get('context', {})
+            course_id = serializer.validated_data.get('course_id')
+
+            # Security validation
+            is_safe, error_message = ChatSecurityGuard.validate_message(message, request.user.id)
+            if not is_safe:
+                logger.warning(f"Blocked unsafe message from user {request.user.id}: {error_message}")
+                return Response(
+                    {
+                        'response': error_message,
+                        'context': {'last_message': message[:100]},
+                        'service_used': 'security_guard',
+                        'response_time_ms': 0,
+                        'generated_at': timezone.now(),
+                        'rag_enhanced': False,
+                        'course_context_used': bool(course_id),
+                        'security_blocked': True
+                    }
+                )
+
+            start_time = time.time()
+            logger.info(f"Processing chat request from user {request.user.id} for course {course_id}")
+            
+            # Add basic user context and sanitize
+            user_context = ChatSecurityGuard.sanitize_context({
                 'user_id': request.user.id,
                 'username': request.user.username,
+                'first_name': getattr(request.user, 'first_name', ''),
                 'preferences': getattr(request.user, 'study_preferences', {}),
-            }
+            })
 
-            # Add course context if provided
+            # Enhanced course context if provided
             if course_id:
                 try:
-                    course = Course.objects.get(
-                        id=course_id, user=request.user)
-                    user_context['current_course'] = {
+                    course = Course.objects.get(id=course_id, user=request.user)
+                    logger.info(f"Found course: {course.name}")
+                    
+                    # Basic course context (sanitized)
+                    course_context = ChatSecurityGuard.sanitize_context({
+                        'id': course.id,
                         'name': course.name,
+                        'code': course.code,
                         'description': course.description,
                         'difficulty_level': course.difficulty_level
-                    }
-                except Course.DoesNotExist:
-                    pass
+                    })
+                    user_context['current_course'] = course_context
 
-            response_text = self.ai_client.chat_with_assistant(
-                message=message,
-                context={**context, **user_context}
-            )
+                    # Get basic course data with error handling
+                    try:
+                        # Get assignments count
+                        assignments_count = course.assignments.count()
+                        completed_assignments = course.assignments.filter(status='completed').count()
+                        
+                        # Get topic items count
+                        topic_items_count = 0
+                        completed_topics = 0
+                        for course_topic in course.course_topics.all():
+                            topic_items_count += course_topic.topic_items.count()
+                            completed_topics += course_topic.topic_items.filter(is_completed=True).count()
+                        
+                        user_context['course_stats'] = ChatSecurityGuard.sanitize_context({
+                            'assignments_total': assignments_count,
+                            'assignments_completed': completed_assignments,
+                            'topics_total': topic_items_count,
+                            'topics_completed': completed_topics
+                        })
+                        
+                    except Exception as stats_error:
+                        logger.warning(f"Error loading course stats: {stats_error}")
+
+                except Course.DoesNotExist:
+                    logger.warning(f"Course {course_id} not found for user {request.user.id}")
+                except Exception as course_error:
+                    logger.error(f"Error loading course context: {course_error}")
+
+            # Try to use RAG pipeline for context retrieval if available
+            rag_context = ""
+            rag_enhanced = False
+            try:
+                # Import RAG pipeline components here to avoid circular imports
+                from apps.resources.rag_pipeline import RAGRetriever, EmbeddingGenerator
+                
+                if course_id:
+                    logger.info(f"Attempting RAG search for course {course_id}")
+                    # Generate embedding for the message
+                    message_embedding = EmbeddingGenerator.generate_embedding(message)
+                    
+                    # Retrieve relevant chunks using RAG
+                    context_info = RAGRetriever.retrieve_contextual_information(
+                        user_id=request.user.id,
+                        course_id=course_id,
+                        query_text=message,
+                        query_embedding=message_embedding
+                    )
+                    
+                    if context_info and context_info.get('relevant_chunks'):
+                        rag_context = "\n\nRelevant course content:\n"
+                        for chunk in context_info['relevant_chunks'][:3]:  # Top 3 chunks
+                            content = chunk.content[:200] if hasattr(chunk, 'content') else str(chunk)[:200]
+                            rag_context += f"- {content}...\n"
+                        
+                        user_context['rag_results'] = context_info
+                        rag_enhanced = True
+                        logger.info(f"RAG search successful, found {len(context_info['relevant_chunks'])} relevant chunks")
+                        
+            except Exception as rag_error:
+                logger.warning(f"RAG search failed: {rag_error}")
+                # Continue without RAG context
+
+            # Enhance the message with RAG context
+            enhanced_message = message
+            if rag_context:
+                enhanced_message = f"{message}\n\nContext from course materials:{rag_context}"
+
+            logger.info(f"Sending message to AI client: {enhanced_message[:100]}...")
+            
+            try:
+                if not self.ai_client.available:
+                    logger.error("AI client not available")
+                    response_text = "I'm sorry, the AI service is currently unavailable. Please try again later."
+                else:
+                    # Sanitize all context before sending to AI
+                    sanitized_context = ChatSecurityGuard.sanitize_context({**context, **user_context})
+                    
+                    # Use secure prompt creation
+                    secure_prompt = ChatSecurityGuard.create_safe_prompt(enhanced_message, sanitized_context)
+                    
+                    # Call AI with secure prompt
+                    response_text = self.ai_client._call_openai(secure_prompt)
+                    logger.info(f"AI response received: {response_text[:100]}...")
+                    
+                    # Validate AI response before sending to user
+                    is_response_safe, sanitized_response = ChatSecurityGuard.validate_response(response_text)
+                    if not is_response_safe:
+                        response_text = sanitized_response
+                    else:
+                        response_text = sanitized_response
+                    
+            except Exception as ai_error:
+                logger.error(f"AI client error: {ai_error}")
+                response_text = "I'm sorry, I'm having trouble processing your request right now. Please try again in a moment."
 
             response_time_ms = int((time.time() - start_time) * 1000)
 
             response_data = {
                 'response': response_text,
                 'context': {**context, 'last_message': message},
-                'service_used': 'gemini',
+                'service_used': 'openai',
                 'response_time_ms': response_time_ms,
-                'generated_at': timezone.now()
+                'generated_at': timezone.now(),
+                'rag_enhanced': rag_enhanced,
+                'course_context_used': bool(course_id)
             }
 
             response_serializer = ChatResponseSerializer(response_data)
             return Response(response_serializer.data)
 
         except Exception as e:
-            response_time_ms = int((time.time() - start_time) * 1000)
+            logger.error(f"Chat endpoint error: {e}", exc_info=True)
+            response_time_ms = int((time.time() - start_time) * 1000) if 'start_time' in locals() else 0
             return Response(
                 {
                     'error': 'Chat failed',

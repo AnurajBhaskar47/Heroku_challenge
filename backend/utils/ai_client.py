@@ -1,7 +1,7 @@
 """
-AI Client for Google Gemini integration.
+AI Client for OpenAI integration.
 
-This module provides a wrapper around Google's Gemini API for generating
+This module provides a wrapper around OpenAI's API for generating
 explanations, study plans, and other AI-powered content.
 """
 
@@ -13,40 +13,40 @@ from django.conf import settings
 from django.core.cache import cache
 
 try:
-    import google.generativeai as genai
-    GENAI_AVAILABLE = True
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
 except ImportError:
-    GENAI_AVAILABLE = False
-    genai = None
+    OPENAI_AVAILABLE = False
+    OpenAI = None
 
 logger = logging.getLogger(__name__)
 
 
 class AIClient:
     """
-    Client for interacting with Google Gemini AI.
+    Client for interacting with OpenAI API.
 
     Provides methods for generating explanations, study plans, and chat responses.
     """
 
     def __init__(self):
         """Initialize the AI client."""
-        self.api_key = getattr(settings, 'GOOGLE_GEMINI_API_KEY', '')
+        self.api_key = getattr(settings, 'OPENAI_API_KEY', '')
         self.cache_duration = getattr(
             settings, 'AI_CACHE_DURATION', 3600)  # 1 hour
         self.fallback_enabled = getattr(settings, 'AI_FALLBACK_ENABLED', True)
 
-        if GENAI_AVAILABLE and self.api_key:
+        if OPENAI_AVAILABLE and self.api_key:
             try:
-                genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel('gemini-pro')
+                self.client = OpenAI(api_key=self.api_key)
+                self.model = 'gpt-4o-mini'  # Use GPT-4o-mini as default
                 self.available = True
             except Exception as e:
-                logger.error(f"Failed to initialize Gemini client: {e}")
+                logger.error(f"Failed to initialize OpenAI client: {e}")
                 self.available = False
         else:
             self.available = False
-            self.model = None
+            self.client = None
 
     def is_available(self) -> bool:
         """Check if the AI client is available."""
@@ -57,16 +57,16 @@ class AIClient:
         key_data = json.dumps(kwargs, sort_keys=True)
         return f"ai_client:{prefix}:{hash(key_data)}"
 
-    def _call_gemini(self, prompt: str, cache_key: str = None) -> str:
+    def _call_openai(self, prompt: str, cache_key: str = None) -> str:
         """
-        Call the Gemini API with the given prompt.
+        Call the OpenAI API with the given prompt.
 
         Args:
-            prompt: The prompt to send to Gemini
+            prompt: The prompt to send to OpenAI
             cache_key: Optional cache key for caching the response
 
         Returns:
-            The response text from Gemini
+            The response text from OpenAI
 
         Raises:
             Exception: If the API call fails and fallback is not available
@@ -74,7 +74,7 @@ class AIClient:
         if not self.is_available():
             if self.fallback_enabled:
                 return self._fallback_response(prompt)
-            raise Exception("Gemini AI is not available")
+            raise Exception("OpenAI API is not available")
 
         # Check cache first
         if cache_key:
@@ -84,8 +84,15 @@ class AIClient:
                 return cached_response
 
         try:
-            response = self.model.generate_content(prompt)
-            response_text = response.text.strip()
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=1000,
+                temperature=0.7
+            )
+            response_text = response.choices[0].message.content.strip()
 
             # Cache the response
             if cache_key and response_text:
@@ -96,7 +103,7 @@ class AIClient:
             return response_text
 
         except Exception as e:
-            logger.error(f"Gemini API call failed: {e}")
+            logger.error(f"OpenAI API call failed: {e}")
             if self.fallback_enabled:
                 return self._fallback_response(prompt)
             raise
@@ -192,7 +199,7 @@ Please structure your explanation clearly and make it engaging for learning. Use
 Explanation:
 """
 
-        return self._call_gemini(prompt, cache_key)
+        return self._call_openai(prompt, cache_key)
 
     def generate_study_plan(
         self,
@@ -289,7 +296,7 @@ Please generate a comprehensive study plan in JSON format with the following str
 Study Plan:
 """
 
-        response = self._call_gemini(prompt, cache_key)
+        response = self._call_openai(prompt, cache_key)
 
         # Try to parse as JSON, fallback to text if it fails
         try:
@@ -340,7 +347,7 @@ Please provide a helpful, friendly, and informative response. Keep it concise bu
 Assistant Response:
 """
 
-        return self._call_gemini(prompt)
+        return self._call_openai(prompt)
 
     def get_service_info(self) -> Dict[str, Any]:
         """
@@ -350,9 +357,9 @@ Assistant Response:
             Dictionary containing service information
         """
         return {
-            'service_name': 'Google Gemini',
+            'service_name': 'OpenAI',
             'available': self.is_available(),
-            'model': 'gemini-pro' if self.available else None,
+            'model': self.model if self.available else None,
             'features': ['explanations', 'study_plans', 'chat'],
             'cache_enabled': bool(cache),
             'cache_duration': self.cache_duration,

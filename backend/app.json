@@ -41,9 +41,9 @@
             "generator": "secret",
             "required": true
         },
-        "GOOGLE_GEMINI_API_KEY": {
-            "description": "Google Gemini API key for AI features",
-            "required": false
+        "OPENAI_API_KEY": {
+            "description": "OpenAI API key for AI features",
+            "required": true
         },
         "USE_VECTOR_SEARCH": {
             "description": "Enable vector search functionality",

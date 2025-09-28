@@ -136,7 +136,7 @@ const ResourceUploadModal = ({ isOpen, onClose, courses, onUploadSuccess, preSel
 
                 {/* Title */}
                 <Input
-                    label="Title *"
+                    label="Title"
                     value={uploadForm.title}
                     onChange={(e) => setUploadForm(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="Enter resource title"
@@ -154,7 +154,7 @@ const ResourceUploadModal = ({ isOpen, onClose, courses, onUploadSuccess, preSel
 
                 {/* Resource Type */}
                 <Select
-                    label="Resource Type *"
+                    label="Resource Type"
                     value={uploadForm.resource_type}
                     onChange={(e) => setUploadForm(prev => ({ ...prev, resource_type: e.target.value }))}
                     options={resourceTypeOptions}
@@ -163,7 +163,7 @@ const ResourceUploadModal = ({ isOpen, onClose, courses, onUploadSuccess, preSel
 
                 {/* Course */}
                 <Select
-                    label="Course *"
+                    label="Course"
                     value={uploadForm.course}
                     onChange={(e) => setUploadForm(prev => ({ ...prev, course: e.target.value }))}
                     options={[

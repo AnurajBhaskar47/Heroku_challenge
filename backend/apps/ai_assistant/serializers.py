@@ -209,7 +209,8 @@ class ChatRequestSerializer(serializers.Serializer):
     )
     course_id = serializers.IntegerField(
         required=False,
-        help_text="Related course ID for context"
+        allow_null=True,
+        help_text="Course ID for context-aware responses"
     )
 
 
@@ -222,6 +223,10 @@ class ChatResponseSerializer(serializers.Serializer):
     service_used = serializers.CharField()
     response_time_ms = serializers.IntegerField()
     generated_at = serializers.DateTimeField()
+    rag_enhanced = serializers.BooleanField(default=False)
+    course_context_used = serializers.BooleanField(default=False)
+    security_blocked = serializers.BooleanField(default=False)
+    rate_limited = serializers.BooleanField(default=False)
 
 
 class AIServiceStatusSerializer(serializers.Serializer):

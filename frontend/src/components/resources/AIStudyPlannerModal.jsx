@@ -58,17 +58,14 @@ const AIStudyPlannerModal = ({ isOpen, onClose, courses, onGenerateSuccess, load
     ];
 
     const exampleQueries = [
-        "I need to prepare for my Data Structures midterm in 3 weeks. I'm weak in trees but strong in arrays. I can study 2 hours on weekdays, 4 hours on weekends.",
-        "Create a comprehensive study plan for Machine Learning. I have 6 weeks and prefer practical projects over theory.",
-        "Help me study Calculus II over the summer. I struggle with integration but understand derivatives well.",
-        "I need to catch up on missed Chemistry lectures. Focus on organic chemistry, I have 2 weeks before the exam."
+        "Create a comprehensive study plan for Machine Learning. I have 6 weeks and prefer practical projects over theory."
     ];
 
     return (
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="AI Study Plan Generator"
+            title="AI Study Planner"
             size="lg"
         >
             <form onSubmit={handleGenerateAIStudyPlan} className="space-y-4">
@@ -83,7 +80,7 @@ const AIStudyPlannerModal = ({ isOpen, onClose, courses, onGenerateSuccess, load
                         <div className="ml-3">
                             <h4 className="text-sm font-medium text-blue-900">AI-Powered Study Planning</h4>
                             <p className="text-sm text-blue-700 mt-1">
-                                Describe your learning goals and constraints in natural language. Our AI will analyze 
+                                Describe your learning goals and constraints. We will analyze 
                                 your uploaded resources to create a personalized study plan optimized for your success.
                             </p>
                         </div>
@@ -104,7 +101,7 @@ const AIStudyPlannerModal = ({ isOpen, onClose, courses, onGenerateSuccess, load
 
                 {/* Course Selection */}
                 <Select
-                    label="Course *"
+                    label="Course"
                     value={aiPlannerForm.course}
                     onChange={(e) => setAiPlannerForm(prev => ({ ...prev, course: e.target.value }))}
                     options={[
@@ -117,7 +114,7 @@ const AIStudyPlannerModal = ({ isOpen, onClose, courses, onGenerateSuccess, load
                 {/* Study Plan Request */}
                 <div>
                     <TextArea
-                        label="Study Plan Request *"
+                        label="Study Plan Request"
                         value={aiPlannerForm.query}
                         onChange={(e) => setAiPlannerForm(prev => ({ ...prev, query: e.target.value }))}
                         placeholder="Describe your study goals, timeline, strengths, weaknesses, and any constraints..."
