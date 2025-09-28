@@ -270,7 +270,7 @@ const TopicsSection = ({ courseId }) => {
             case 'beginner':
                 return 'bg-blue-100 text-blue-800';
             case 'intermediate':
-                return 'bg-orange-100 text-yellow-800';
+                return 'bg-orange-100 text-orange-800';
             case 'advanced':
                 return 'bg-red-100 text-red-800';
             default:
@@ -289,12 +289,12 @@ const TopicsSection = ({ courseId }) => {
     return (
         <Card className="w-full">
             <CardHeader className="px-4">
-                <div className="flex justify-between items-center">
-                    <CardTitle>Course Topics</CardTitle>
+                <div className="flex justify-between items-center w-full">
+                    <CardTitle>Topics</CardTitle>
                     <div className="flex space-x-2">
-                        <Button size="sm" onClick={() => setSyllabusModalOpen(true)}>
-                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        <Button size="sm" onClick={() => setSyllabusModalOpen(true)} className="whitespace-nowrap">
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                             </svg>
                             Add Topic
                         </Button>
@@ -302,6 +302,7 @@ const TopicsSection = ({ courseId }) => {
                             variant="outline" 
                             size="sm" 
                             onClick={() => setTopicItemModalOpen(true)}
+                            className="whitespace-nowrap"
                         >
                             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -312,7 +313,7 @@ const TopicsSection = ({ courseId }) => {
                 </div>
             </CardHeader>
 
-            <CardBody className="h-[400px] flex flex-col">
+            <CardBody className="h-[500px] flex flex-col">
                 {/* Error displays */}
                 {(courseTopicsError || topicItemsError) && (
                     <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -425,7 +426,7 @@ const TopicsSection = ({ courseId }) => {
                                                     item.is_completed 
                                                         ? 'line-through text-green-700' 
                                                         : getDifficultyCardColor(item.difficulty).includes('text-blue-800') ? 'text-blue-900'
-                                                        : getDifficultyCardColor(item.difficulty).includes('text-yellow-800') ? 'text-yellow-900'
+                                                        : getDifficultyCardColor(item.difficulty).includes('text-orange-800') ? 'text-orange-900'
                                                         : getDifficultyCardColor(item.difficulty).includes('text-red-800') ? 'text-red-900'
                                                         : 'text-gray-900'
                                                 }`}>
@@ -444,47 +445,6 @@ const TopicsSection = ({ courseId }) => {
                             })}
                         </div>
                         
-                        {/* Show syllabus sources at the bottom */}
-                        {Array.isArray(courseTopics) && courseTopics.length > 0 && (
-                            <div className="mt-6 pt-4 border-t border-gray-200">
-                                <h5 className="text-xs font-medium text-gray-700 mb-2">Syllabus Sources:</h5>
-                                <div className="space-y-2">
-                                    {(Array.isArray(courseTopics) ? courseTopics : []).map((topic) => (
-                                        <div key={topic.id} className="flex items-center justify-between text-xs text-gray-600 bg-gray-50 rounded p-2">
-                                            <span>
-                                                {topic.content_source === 'file' ? (
-                                                    <>📄 {topic.syllabus_file_url?.split('/').pop() || 'Syllabus File'}</>
-                                                ) : (
-                                                    <>📝 Text Content ({topic.syllabus_text?.length || 0} chars)</>
-                                                )}
-                                            </span>
-                                            <div className="flex items-center space-x-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleEditSyllabus(topic)}
-                                                    title="Edit syllabus"
-                                                >
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => setDeleteConfirm({ isOpen: true, topic: topic, topicItem: null })}
-                                                    title="Delete syllabus"
-                                                >
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 )}
             </CardBody>

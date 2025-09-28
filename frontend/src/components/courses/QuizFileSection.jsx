@@ -47,6 +47,19 @@ const QuizFileSection = ({ courseId }) => {
         }
     }, [courseId]);
 
+    // Auto-refresh for processing files
+    useEffect(() => {
+        const hasProcessingFiles = quizFiles.some(quiz => !quiz.is_processed && !quiz.processing_error);
+        
+        if (hasProcessingFiles) {
+            const interval = setInterval(() => {
+                fetchQuizFiles();
+            }, 5000); // Check every 5 seconds
+            
+            return () => clearInterval(interval);
+        }
+    }, [quizFiles]);
+
     // Handle form input changes
     const handleInputChange = (field, value) => {
         setFormData(prev => ({
@@ -144,15 +157,24 @@ const QuizFileSection = ({ courseId }) => {
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle>Quiz Files</CardTitle>
-                        <Button size="sm" onClick={() => setIsUploadModalOpen(true)}>
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                            </svg>
-                            Upload Quiz
-                        </Button>
+                        <div className="flex space-x-2">
+                            <Button size="sm" onClick={() => setIsUploadModalOpen(true)}>
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                Upload Quiz
+                            </Button>
+                            {quizFiles.some(quiz => !quiz.is_processed && !quiz.processing_error) && (
+                                <Button size="sm" variant="ghost" onClick={fetchQuizFiles} title="Refresh processing status">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </CardHeader>
-                <CardBody>
+                <CardBody className="h-[325px] flex flex-col">
                     {error && (
                         <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
                             <p className="text-sm text-red-700">{error}</p>
@@ -160,7 +182,7 @@ const QuizFileSection = ({ courseId }) => {
                     )}
 
                     {quizFiles.length === 0 ? (
-                        <div className="text-center py-8">
+                        <div className="flex-1 flex flex-col items-center justify-center text-center">
                             <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
@@ -172,8 +194,9 @@ const QuizFileSection = ({ courseId }) => {
                             </Button>
                         </div>
                     ) : (
-                        <div className="space-y-3">
-                            {quizFiles.map((quiz) => (
+                        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 pr-2">
+                            <div className="space-y-3">
+                                {quizFiles.map((quiz) => (
                                 <div key={quiz.id} className="border rounded-lg p-3 hover:bg-gray-50">
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
@@ -189,12 +212,22 @@ const QuizFileSection = ({ courseId }) => {
                                                     {quiz.file_type?.toUpperCase() || 'File'}
                                                 </span>
                                                 <span>{formatFileSize(quiz.file_size)}</span>
-                                                <span className={`px-2 py-1 rounded-full text-xs ${
-                                                    quiz.is_processed 
-                                                        ? 'bg-green-100 text-green-700' 
-                                                        : 'bg-yellow-100 text-yellow-700'
-                                                }`}>
-                                                    {quiz.is_processed ? 'Processed' : 'Processing...'}
+                                                <span 
+                                                    className={`px-2 py-1 rounded-full text-xs font-medium cursor-help ${
+                                                        quiz.is_processed 
+                                                            ? 'bg-green-100 text-green-700' 
+                                                            : quiz.processing_error
+                                                            ? 'bg-red-100 text-red-700'
+                                                            : 'bg-yellow-100 text-yellow-700'
+                                                    }`}
+                                                    title={quiz.processing_error || (quiz.is_processed ? 'Successfully processed through RAG pipeline' : 'Processing through RAG pipeline for AI features')}
+                                                >
+                                                    {quiz.is_processed 
+                                                        ? '✓ Processed' 
+                                                        : quiz.processing_error 
+                                                        ? '✗ Failed' 
+                                                        : '⏳ Processing...'
+                                                    }
                                                 </span>
                                             </div>
                                         </div>
@@ -223,7 +256,8 @@ const QuizFileSection = ({ courseId }) => {
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
                     )}
                 </CardBody>

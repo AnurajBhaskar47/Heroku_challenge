@@ -20,6 +20,8 @@ const ResourcesPage = () => {
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [selectedCourse, setSelectedCourse] = useState('all');
+    const [groupByCourse, setGroupByCourse] = useState(true);
     
     // Modal states
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -34,14 +36,15 @@ const ResourcesPage = () => {
         try {
             setLoading(true);
             setError(null);
-            const data = await resourcesService.getResources();
+            const params = selectedCourse !== 'all' ? { course_id: selectedCourse } : {};
+            const data = await resourcesService.getResources(params);
             setResources(data.results || data);
         } catch (err) {
             setError(err.message || 'Failed to load resources');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [selectedCourse]);
 
     const loadCourses = useCallback(async () => {
         try {
@@ -119,6 +122,44 @@ const ResourcesPage = () => {
                     </div>
                 </div>
 
+                {/* Filters */}
+                <div className="flex items-center justify-between mb-6 p-4 bg-white rounded-lg shadow-sm border">
+                    <div className="flex items-center space-x-4">
+                        {/* Course Filter */}
+                        <div className="flex items-center space-x-2">
+                            <label className="text-sm font-medium text-gray-700">Course:</label>
+                            <select
+                                value={selectedCourse}
+                                onChange={(e) => setSelectedCourse(e.target.value)}
+                                className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option value="all">All Courses</option>
+                                {courses.map((course) => (
+                                    <option key={course.id} value={course.id}>
+                                        {course.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Group Toggle */}
+                        <div className="flex items-center space-x-2">
+                            <label className="text-sm font-medium text-gray-700">Group by course:</label>
+                            <input
+                                type="checkbox"
+                                checked={groupByCourse}
+                                onChange={(e) => setGroupByCourse(e.target.checked)}
+                                className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out rounded focus:ring-blue-500"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Results count */}
+                    <div className="text-sm text-gray-500">
+                        {resources.length} resource{resources.length !== 1 ? 's' : ''} found
+                    </div>
+                </div>
+
                 {/* Error Display */}
                 {error && (
                     <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
@@ -157,7 +198,59 @@ const ResourcesPage = () => {
                             Upload Your First Resource
                         </Button>
                     </div>
+                ) : groupByCourse && selectedCourse === 'all' ? (
+                    // Group by course view
+                    <div className="space-y-8">
+                        {(() => {
+                            // Group resources by course
+                            const resourcesByCourse = resources.reduce((groups, resource) => {
+                                const courseId = resource.course_id || resource.course?.id;
+                                const courseName = resource.course_name || resource.course?.name || 'Uncategorized';
+                                
+                                if (!groups[courseId]) {
+                                    groups[courseId] = {
+                                        name: courseName,
+                                        resources: []
+                                    };
+                                }
+                                groups[courseId].resources.push(resource);
+                                return groups;
+                            }, {});
+
+                            return Object.values(resourcesByCourse).map((courseGroup) => (
+                                <div key={courseGroup.name} className="mb-8">
+                                    <div className="flex items-center mb-4">
+                                        <h3 className="text-xl font-semibold text-gray-900">{courseGroup.name}</h3>
+                                        <span className="ml-3 px-2 py-1 text-sm bg-gray-100 text-gray-600 rounded-full">
+                                            {courseGroup.resources.length} resource{courseGroup.resources.length !== 1 ? 's' : ''}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                        {courseGroup.resources.map((resource) => (
+                                            <ResourceCard
+                                                key={resource.id}
+                                                resource={resource}
+                                                onView={(resource) => {
+                                                    setSelectedResource(resource);
+                                                    setViewResourceModalOpen(true);
+                                                }}
+                                                onEdit={(resource) => {
+                                                    setSelectedResource(resource);
+                                                    setEditResourceModalOpen(true);
+                                                }}
+                                                onDelete={(resource) => {
+                                                    setSelectedResource(resource);
+                                                    setDeleteResourceModalOpen(true);
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            ));
+                        })()}
+                    </div>
                 ) : (
+                    // Standard grid view
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {resources.map((resource) => (
                             <ResourceCard

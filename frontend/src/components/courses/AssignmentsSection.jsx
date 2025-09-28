@@ -227,6 +227,19 @@ const AssignmentsSection = ({ courseId, onUpdateAssignmentStatus }) => {
     // Assignment files without extracted assignments
     const unprocessedFiles = assignmentFiles.filter(file => !file.assignment);
 
+    // Auto-refresh for processing files
+    useEffect(() => {
+        const hasProcessingFiles = unprocessedFiles.some(file => !file.is_processed && !file.processing_error);
+        
+        if (hasProcessingFiles) {
+            const interval = setInterval(() => {
+                fetchData();
+            }, 5000); // Check every 5 seconds
+            
+            return () => clearInterval(interval);
+        }
+    }, [unprocessedFiles]);
+
     if (isLoading) {
         return (
             <Card>
@@ -259,21 +272,29 @@ const AssignmentsSection = ({ courseId, onUpdateAssignmentStatus }) => {
                                 </svg>
                                 Add Manual
                             </Button>
+                            {unprocessedFiles.some(file => !file.is_processed && !file.processing_error) && (
+                                <Button size="sm" variant="ghost" onClick={fetchData} title="Refresh processing status">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </CardHeader>
-                <CardBody>
+                <CardBody className="h-[325px] flex flex-col">
                     {error && (
                         <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
                             <p className="text-sm text-red-700">{error}</p>
                         </div>
                     )}
 
-                    {/* Processed Assignments */}
-                    {allAssignments.length > 0 && (
-                        <div className="space-y-4 mb-8">
-                            <h4 className="font-medium text-gray-900 mb-4">Active Assignments</h4>
-                            {allAssignments.map((assignment) => (
+                    <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 pr-2">
+                        {/* Processed Assignments */}
+                        {allAssignments.length > 0 && (
+                            <div className="space-y-4 mb-8">
+                                <h4 className="font-medium text-gray-900 mb-4">Active Assignments</h4>
+                                {allAssignments.map((assignment) => (
                                 <div key={`assignment-${assignment.id}`} className="border rounded-lg p-4 hover:bg-gray-50 mb-4">
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
@@ -342,8 +363,8 @@ const AssignmentsSection = ({ courseId, onUpdateAssignmentStatus }) => {
                                                     onClick={() => handleUpdateAssignmentStatus(assignment.id, 'in_progress')}
                                                     title="Start working"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H15" />
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                                        <polygon points="5,3 19,12 5,21" strokeLinecap="round" strokeLinejoin="round" />
                                                     </svg>
                                                 </Button>
                                             )}
@@ -388,15 +409,15 @@ const AssignmentsSection = ({ courseId, onUpdateAssignmentStatus }) => {
                                         </div>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                ))}
+                            </div>
+                        )}
 
-                    {/* Unprocessed Files */}
-                    {unprocessedFiles.length > 0 && (
-                        <div className="border-t pt-6">
-                            <h4 className="font-medium text-gray-900 mb-4">Processing Files</h4>
-                            {unprocessedFiles.map((file) => (
+                        {/* Unprocessed Files */}
+                        {unprocessedFiles.length > 0 && (
+                            <div className="border-t pt-6">
+                                <h4 className="font-medium text-gray-900 mb-4">Processing Files</h4>
+                                {unprocessedFiles.map((file) => (
                                 <div key={`file-${file.id}`} className="border rounded-lg p-4 hover:bg-gray-50 mb-4">
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
@@ -412,12 +433,22 @@ const AssignmentsSection = ({ courseId, onUpdateAssignmentStatus }) => {
                                                     {file.file_type?.toUpperCase() || 'File'}
                                                 </span>
                                                 <span className="bg-gray-100 px-2 py-1 rounded">{formatFileSize(file.file_size)}</span>
-                                                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                                    file.is_processed 
-                                                        ? 'bg-blue-100 text-blue-700' 
-                                                        : 'bg-yellow-100 text-yellow-700'
-                                                }`}>
-                                                    {file.is_processed ? 'Processing...' : 'Extracting...'}
+                                                <span 
+                                                    className={`px-2 py-1 rounded text-xs font-medium cursor-help ${
+                                                        file.is_processed 
+                                                            ? 'bg-green-100 text-green-700' 
+                                                            : file.processing_error
+                                                            ? 'bg-red-100 text-red-700'
+                                                            : 'bg-yellow-100 text-yellow-700'
+                                                    }`}
+                                                    title={file.processing_error || (file.is_processed ? 'Successfully processed through RAG pipeline and assignment created' : 'Processing through RAG pipeline to extract assignment details')}
+                                                >
+                                                    {file.is_processed 
+                                                        ? '✓ Processed' 
+                                                        : file.processing_error 
+                                                        ? '✗ Failed' 
+                                                        : '⏳ Processing...'
+                                                    }
                                                 </span>
                                             </div>
                                         </div>
@@ -446,29 +477,30 @@ const AssignmentsSection = ({ courseId, onUpdateAssignmentStatus }) => {
                                         </div>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Empty State */}
-                    {allAssignments.length === 0 && unprocessedFiles.length === 0 && (
-                        <div className="text-center py-8">
-                            <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                            </svg>
-                            <p className="text-gray-600 text-sm mb-4">
-                                No assignments yet. Upload assignment files to automatically extract details, or create assignments manually.
-                            </p>
-                            <div className="flex justify-center space-x-2">
-                                <Button size="sm" onClick={() => setIsUploadModalOpen(true)}>
-                                    Upload Assignment File
-                                </Button>
-                                <Button size="sm" variant="secondary" onClick={() => setIsManualAssignmentModalOpen(true)}>
-                                    Add Manual Assignment
-                                </Button>
+                                ))}
                             </div>
-                        </div>
-                    )}
+                        )}
+
+                        {/* Empty State */}
+                        {allAssignments.length === 0 && unprocessedFiles.length === 0 && (
+                            <div className="flex-1 flex flex-col items-center justify-center text-center">
+                                <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                </svg>
+                                <p className="text-gray-600 text-sm mb-4">
+                                    No assignments yet. Upload assignment files to automatically extract details, or create assignments manually.
+                                </p>
+                                <div className="flex justify-center space-x-2">
+                                    <Button size="sm" onClick={() => setIsUploadModalOpen(true)}>
+                                        Upload Assignment File
+                                    </Button>
+                                    <Button size="sm" variant="secondary" onClick={() => setIsManualAssignmentModalOpen(true)}>
+                                        Add Manual Assignment
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </CardBody>
             </Card>
 

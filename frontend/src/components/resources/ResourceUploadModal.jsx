@@ -6,18 +6,25 @@ import TextArea from '../common/TextArea';
 import Button from '../common/Button';
 import { resourcesService } from '../../services/resources';
 
-const ResourceUploadModal = ({ isOpen, onClose, courses, onUploadSuccess }) => {
+const ResourceUploadModal = ({ isOpen, onClose, courses, onUploadSuccess, preSelectedCourseId = null }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [uploadForm, setUploadForm] = useState({
         title: '',
         description: '',
         resource_type: 'pdf',
-        course: '',
+        course: preSelectedCourseId || '',
         subject: '',
         difficulty_level: 3,
         file: null
     });
+
+    // Update course selection when preSelectedCourseId changes
+    React.useEffect(() => {
+        if (preSelectedCourseId && isOpen) {
+            setUploadForm(prev => ({ ...prev, course: preSelectedCourseId }));
+        }
+    }, [preSelectedCourseId, isOpen]);
 
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
@@ -58,7 +65,7 @@ const ResourceUploadModal = ({ isOpen, onClose, courses, onUploadSuccess }) => {
                 title: '',
                 description: '',
                 resource_type: 'pdf',
-                course: '',
+                course: preSelectedCourseId || '',
                 subject: '',
                 difficulty_level: 3,
                 file: null

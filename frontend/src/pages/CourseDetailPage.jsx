@@ -11,6 +11,9 @@ import CourseFormModal from '../components/courses/CourseFormModal.jsx';
 import QuizFileSection from '../components/courses/QuizFileSection.jsx';
 import AssignmentsSection from '../components/courses/AssignmentsSection.jsx';
 import TopicsSection from '../components/courses/TopicsSection.jsx';
+import ResourcesSection from '../components/courses/ResourcesSection.jsx';
+import ProgressTracker from '../components/courses/ProgressTracker.jsx';
+import ChatBot from '../components/common/ChatBot.jsx';
 
 /**
  * Course detail page component
@@ -185,10 +188,10 @@ const CourseDetailPage = () => {
                 </div>
             </div>
 
-            {/* Top Section: Course Information + Course Overview with Course Topics Sidebar */}
+            {/* Top Section: Course Information + Progress Tracker with Course Topics Sidebar */}
             <div className="grid gap-6 lg:grid-cols-10 mb-6">
-                {/* Left Content - Course Information + Course Overview (70%) */}
-                <div className="lg:col-span-7 space-y-6">
+                {/* Left Content - Course Information + Progress Tracker (60%) */}
+                <div className="lg:col-span-6 space-y-6">
                     {/* Course Information */}
                     <Card>
                         <CardHeader>
@@ -273,41 +276,19 @@ const CourseDetailPage = () => {
                         </CardBody>
                     </Card>
 
-                    {/* Course Overview */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Course Overview</CardTitle>
-                        </CardHeader>
-                        <CardBody>
-                            <div className="grid grid-cols-2 gap-12">
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-gray-900">{course.credits}</div>
-                                    <div className="text-sm text-gray-600">Credits</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-blue-600">{getDifficultyLabel(course.difficulty_level)}</div>
-                                    <div className="text-sm text-gray-600">Difficulty</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className={`text-2xl font-bold ${course.is_active ? 'text-green-600' : 'text-gray-600'}`}>
-                                        {course.is_active ? 'Active' : 'Inactive'}
-                                    </div>
-                                    <div className="text-sm text-gray-600">Status</div>
-                                </div>
-                            </div>
-                        </CardBody>
-                    </Card>
+                    {/* Progress Tracker */}
+                    <ProgressTracker courseId={id} />
                 </div>
 
-                {/* Course Topics Sidebar - spans height of Course Information + Course Overview (30%) */}
-                <div className="lg:col-span-3">
+                {/* Topics Sidebar - spans height of Course Information + Progress Tracker (40%) */}
+                <div className="lg:col-span-4">
                     <div className="lg:sticky lg:top-6">
                         <TopicsSection courseId={id} />
                     </div>
                 </div>
             </div>
 
-            {/* Bottom Section: Quiz Files and Assignments - Full Width 50% each */}
+            {/* Middle Section: Quiz Files, Assignments */}
             <div className="grid gap-6 md:grid-cols-2">
                 {/* Quiz Files - 50% of full width */}
                 <div className="w-full">
@@ -323,6 +304,11 @@ const CourseDetailPage = () => {
                 </div>
             </div>
 
+            {/* Resources - full width */}
+            <div className="w-full">
+                <ResourcesSection courseId={id} />
+            </div>
+            
             {/* Edit Course Modal */}
             <CourseFormModal
                 isOpen={isEditModalOpen}
@@ -341,6 +327,9 @@ const CourseDetailPage = () => {
                 confirmText="Delete"
                 isConfirming={isSubmitting}
             />
+
+            {/* Chat Bot */}
+            <ChatBot courseId={id} />
         </div>
     );
 };

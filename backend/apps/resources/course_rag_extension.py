@@ -69,10 +69,11 @@ class CourseRAGExtension:
             )
             
             # Chunk the content
-            chunks = DocumentProcessor.intelligent_chunk_text(content, max_chunk_size=1500)
+            chunks = DocumentProcessor.intelligent_chunk_text(content, chunk_size=1500)
             
             # Process each chunk
-            for i, chunk_text in enumerate(chunks):
+            for i, chunk_data in enumerate(chunks):
+                chunk_text = chunk_data['content']
                 if len(chunk_text.strip()) < 50:
                     continue
                     
@@ -82,24 +83,23 @@ class CourseRAGExtension:
                     if not embedding:
                         continue
                     
-                    # Extract topics from the chunk
-                    topics = DocumentProcessor._extract_topics(chunk_text)
-                    
                     # Create document chunk with embedding
                     chunk = DocumentChunk.objects.create(
                         document=document,
-                        chunk_index=i,
+                        chunk_index=chunk_data['chunk_index'],
                         content=chunk_text,
+                        chunk_type=chunk_data.get('chunk_type', 'quiz_info'),
+                        word_count=chunk_data.get('word_count', len(chunk_text.split())),
+                        difficulty_level=chunk_data.get('difficulty_level', 3),
+                        topics=chunk_data.get('topics', []),
+                        learning_objectives=chunk_data.get('learning_objectives', []),
+                        estimated_study_time=chunk_data.get('estimated_study_time', 10),
                         embedding=embedding,
-                        topics=topics,
-                        metadata={
-                            'course_id': quiz.course.id,
-                            'course_name': quiz.course.name,
-                            'content_type': 'quiz'
-                        }
+                        course=quiz.course
                     )
                     
                     # Create knowledge nodes for the topics
+                    topics = chunk_data.get('topics', [])
                     for topic in topics:
                         if len(topic.strip()) >= 3:
                             knowledge_node, created = KnowledgeNode.objects.get_or_create(
@@ -172,10 +172,11 @@ class CourseRAGExtension:
             )
             
             # Chunk the content
-            chunks = DocumentProcessor.intelligent_chunk_text(content, max_chunk_size=1500)
+            chunks = DocumentProcessor.intelligent_chunk_text(content, chunk_size=1500)
             
             # Process each chunk
-            for i, chunk_text in enumerate(chunks):
+            for i, chunk_data in enumerate(chunks):
+                chunk_text = chunk_data['content']
                 if len(chunk_text.strip()) < 50:
                     continue
                     
@@ -185,24 +186,23 @@ class CourseRAGExtension:
                     if not embedding:
                         continue
                     
-                    # Extract topics from the chunk
-                    topics = DocumentProcessor._extract_topics(chunk_text)
-                    
                     # Create document chunk with embedding
                     chunk = DocumentChunk.objects.create(
                         document=document,
-                        chunk_index=i,
+                        chunk_index=chunk_data['chunk_index'],
                         content=chunk_text,
+                        chunk_type=chunk_data.get('chunk_type', 'assignment'),
+                        word_count=chunk_data.get('word_count', len(chunk_text.split())),
+                        difficulty_level=chunk_data.get('difficulty_level', 3),
+                        topics=chunk_data.get('topics', []),
+                        learning_objectives=chunk_data.get('learning_objectives', []),
+                        estimated_study_time=chunk_data.get('estimated_study_time', 15),
                         embedding=embedding,
-                        topics=topics,
-                        metadata={
-                            'course_id': assignment_file.course.id,
-                            'course_name': assignment_file.course.name,
-                            'content_type': 'assignment'
-                        }
+                        course=assignment_file.course
                     )
                     
                     # Create knowledge nodes for the topics
+                    topics = chunk_data.get('topics', [])
                     for topic in topics:
                         if len(topic.strip()) >= 3:
                             knowledge_node, created = KnowledgeNode.objects.get_or_create(
@@ -474,7 +474,7 @@ class CourseRAGExtension:
             )
             
             # Chunk the content
-            chunks = DocumentProcessor.intelligent_chunk_text(content, max_chunk_size=1500)
+            chunks = DocumentProcessor.intelligent_chunk_text(content, chunk_size=1500)
             
             # Process each chunk
             for i, chunk_text in enumerate(chunks):
