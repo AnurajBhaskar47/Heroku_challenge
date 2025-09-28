@@ -50,7 +50,7 @@ const DropdownMenu = ({ items, className = '', trigger = null }) => {
             {trigger || defaultTrigger}
 
             {isOpen && (
-                <div className="absolute right-0 z-10 mt-2 w-35 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div className="absolute right-0 z-50 mt-2 w-35 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                     <div className="py-1" role="none">
                         {items.map((item, index) => (
                             <button

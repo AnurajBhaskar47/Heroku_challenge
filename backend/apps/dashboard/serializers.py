@@ -39,6 +39,35 @@ class UpcomingAssignmentSerializer(serializers.Serializer):
     days_until_due = serializers.IntegerField()
 
 
+class UpcomingExamSerializer(serializers.Serializer):
+    """
+    Serializer for an upcoming exam/quiz.
+    """
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    exam_date = serializers.DateTimeField()
+    exam_type = serializers.CharField()
+    exam_type_display = serializers.CharField()
+    course_name = serializers.CharField()
+    course_id = serializers.IntegerField()
+    days_until_exam = serializers.IntegerField()
+    location = serializers.CharField(allow_null=True)
+    duration_minutes = serializers.IntegerField(allow_null=True)
+    preparation_percentage = serializers.FloatField()
+
+
+class UpcomingStudyPlanDeadlineSerializer(serializers.Serializer):
+    """
+    Serializer for an upcoming study plan deadline.
+    """
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    end_date = serializers.DateField()
+    status = serializers.CharField()
+    progress_percentage = serializers.FloatField()
+    days_until_deadline = serializers.IntegerField(allow_null=True)
+
+
 class RecentCourseSerializer(serializers.Serializer):
     """
     Serializer for a recently accessed/updated course.
@@ -56,4 +85,6 @@ class DashboardSerializer(serializers.Serializer):
     """
     stats = DashboardStatsSerializer()
     upcoming_assignments = UpcomingAssignmentSerializer(many=True)
+    upcoming_exams = UpcomingExamSerializer(many=True)
+    upcoming_study_plan_deadlines = UpcomingStudyPlanDeadlineSerializer(many=True)
     recent_courses = RecentCourseSerializer(many=True)

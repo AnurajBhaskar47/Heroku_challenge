@@ -374,4 +374,181 @@ export const coursesService = {
         });
         return response.data;
     },
+
+    // Exam Management
+    
+    /**
+     * Get exams for a course
+     * @param {number} courseId
+     * @returns {Promise<Object>}
+     */
+    async getExams(courseId) {
+        const response = await api.get(`/courses/${courseId}/exams/`);
+        return response.data;
+    },
+
+    /**
+     * Get a specific exam
+     * @param {number} courseId
+     * @param {number} examId
+     * @returns {Promise<Object>}
+     */
+    async getExam(courseId, examId) {
+        const response = await api.get(`/courses/${courseId}/exams/${examId}/`);
+        return response.data;
+    },
+
+    /**
+     * Create a new exam
+     * @param {number} courseId
+     * @param {Object} examData
+     * @returns {Promise<Object>}
+     */
+    async createExam(courseId, examData) {
+        const response = await api.post(`/courses/${courseId}/exams/`, examData);
+        return response.data;
+    },
+
+    /**
+     * Update an exam
+     * @param {number} courseId
+     * @param {number} examId
+     * @param {Object} examData
+     * @returns {Promise<Object>}
+     */
+    async updateExam(courseId, examId, examData) {
+        const response = await api.put(`/courses/${courseId}/exams/${examId}/`, examData);
+        return response.data;
+    },
+
+    /**
+     * Delete an exam
+     * @param {number} courseId
+     * @param {number} examId
+     * @returns {Promise<void>}
+     */
+    async deleteExam(courseId, examId) {
+        await api.delete(`/courses/${courseId}/exams/${examId}/`);
+    },
+
+    /**
+     * Get upcoming exams for a course
+     * @param {number} courseId
+     * @returns {Promise<Object>}
+     */
+    async getUpcomingExams(courseId) {
+        const response = await api.get(`/courses/${courseId}/exams/upcoming/`);
+        return response.data;
+    },
+
+    /**
+     * Update exam preparation status
+     * @param {number} courseId
+     * @param {number} examId
+     * @param {Object} preparationStatus
+     * @returns {Promise<Object>}
+     */
+    async updateExamPreparation(courseId, examId, preparationStatus) {
+        const response = await api.post(`/courses/${courseId}/exams/${examId}/update_preparation/`, {
+            preparation_status: preparationStatus
+        });
+        return response.data;
+    },
+
+    /**
+     * Generate study plan for an exam
+     * @param {number} courseId
+     * @param {number} examId
+     * @returns {Promise<Object>}
+     */
+    async generateExamStudyPlan(courseId, examId) {
+        const response = await api.post(`/courses/${courseId}/exams/${examId}/generate_study_plan/`);
+        return response.data;
+    },
+
+    /**
+     * Get exam calendar events
+     * @param {number} courseId
+     * @returns {Promise<Array>}
+     */
+    async getExamCalendarEvents(courseId) {
+        const response = await api.get(`/courses/${courseId}/exams/calendar_events/`);
+        return response.data;
+    },
+
+    // Calendar and Timeline Methods
+
+    /**
+     * Get all calendar events for a course (assignments + exams)
+     * @param {number} courseId
+     * @returns {Promise<Array>}
+     */
+    async getCalendarEvents(courseId) {
+        const [assignments, examEvents] = await Promise.all([
+            this.getAssignments(courseId),
+            this.getExamCalendarEvents(courseId)
+        ]);
+
+        const assignmentEvents = (assignments.results || assignments || []).map(assignment => ({
+            id: `assignment_${assignment.id}`,
+            title: assignment.title,
+            start: assignment.due_date,
+            type: 'assignment',
+            assignment_type: assignment.assignment_type,
+            status: assignment.status,
+            description: assignment.description
+        }));
+
+        return [...assignmentEvents, ...examEvents];
+    },
+
+    /**
+     * Get all calendar events including study plan deadlines
+     * @returns {Promise<Array>}
+     */
+    async getAllCalendarEvents() {
+        try {
+            // Get all courses
+            const courses = await this.getCourses();
+            const courseList = courses.results || courses || [];
+            
+            // Get course events
+            let allEvents = [];
+            for (const course of courseList) {
+                try {
+                    const courseEvents = await this.getCalendarEvents(course.id);
+                    const eventsWithCourse = courseEvents.map(event => ({
+                        ...event,
+                        courseName: course.name,
+                        courseId: course.id
+                    }));
+                    allEvents = [...allEvents, ...eventsWithCourse];
+                } catch (err) {
+                    console.error(`Error loading events for course ${course.id}:`, err);
+                }
+            }
+            
+            // Get study plan deadlines
+            try {
+                const studyPlanEvents = await this.getStudyPlanCalendarEvents();
+                allEvents = [...allEvents, ...studyPlanEvents];
+            } catch (err) {
+                console.error('Error loading study plan events:', err);
+            }
+            
+            return allEvents;
+        } catch (err) {
+            console.error('Error loading all calendar events:', err);
+            throw err;
+        }
+    },
+
+    /**
+     * Get study plan deadlines formatted for calendar
+     * @returns {Promise<Array>}
+     */
+    async getStudyPlanCalendarEvents() {
+        const response = await api.get('/study-plans/calendar-events/');
+        return response.data;
+    },
 };

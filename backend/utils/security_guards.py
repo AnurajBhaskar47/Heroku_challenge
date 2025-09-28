@@ -211,6 +211,19 @@ USER CONTEXT:
 - Username: {context.get('username', 'Student')[:50]}
 - Course: {context.get('current_course', {}).get('name', 'None')[:100]}
 
+IMPORTANT DISTINCTION - When answering questions about quizzes/exams:
+- "Quiz Files" = Uploaded documents containing quiz questions for study purposes
+- "Scheduled Quizzes/Exams" = Actual upcoming assessments with dates and times
+- When asked about "upcoming quizzes" or "when is my next quiz", refer to SCHEDULED assessments, not uploaded files
+- Course stats show scheduled exams/quizzes with dates, not just uploaded study materials
+
+COURSE STATISTICS (if available):
+{context.get('course_stats', {})}
+
+SPECIFIC CONTEXT (if selected):
+{f"Selected Exam: {context.get('selected_exam', {}).get('name', 'None')} ({context.get('selected_exam', {}).get('type', '')}) - {context.get('selected_exam', {}).get('date', '')}" if context.get('selected_exam') else ""}
+{f"Selected Topic: {context.get('selected_topic', {}).get('title', 'None')} ({context.get('selected_topic', {}).get('difficulty', '')}) - {'Completed' if context.get('selected_topic', {}).get('is_completed') else 'Not Completed'}" if context.get('selected_topic') else ""}
+
 STUDENT QUESTION: "{safe_message}"
 
 Provide a helpful, educational response focused on learning and academic success. If the question is not educational, politely redirect to academic topics.

@@ -73,7 +73,7 @@ const DashboardPage = () => {
         );
     }
 
-    const { stats, upcoming_assignments, recent_courses } = dashboardData || {};
+    const { stats, upcoming_assignments, upcoming_exams, upcoming_study_plan_deadlines, recent_courses } = dashboardData || {};
 
     return (
         <div className="space-y-6">
@@ -193,12 +193,122 @@ const DashboardPage = () => {
                 </div>
             </div>
 
+            {/* Upcoming Exams/Quizzes and Study Plan Deadlines */}
+            <div className="grid gap-6 lg:grid-cols-2">
+                {/* Upcoming Exams/Quizzes */}
+                <div className="flex flex-col">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Exams & Quizzes</h2>
+                    <Card className="flex-1">
+                        <CardBody className="flex flex-col min-h-[200px]">
+                            {upcoming_exams?.length > 0 ? (
+                                <div className="space-y-3">
+                                    {upcoming_exams.map((exam) => (
+                                        <Link to={`/courses/${exam.course_id}`} key={exam.id} className="block p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200">
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center space-x-2 mb-1">
+                                                        <p className="text-sm font-medium text-gray-900">{exam.name}</p>
+                                                        <span className={`px-2 py-0.5 text-xs rounded-full ${
+                                                            exam.exam_type === 'quiz' ? 'bg-blue-100 text-blue-800' :
+                                                            exam.exam_type === 'midterm' ? 'bg-orange-100 text-orange-800' :
+                                                            exam.exam_type === 'final' ? 'bg-red-100 text-red-800' :
+                                                            'bg-purple-100 text-purple-800'
+                                                        }`}>
+                                                            {exam.exam_type_display}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500">{exam.course_name}</p>
+                                                    {exam.location && (
+                                                        <p className="text-xs text-gray-500 mt-1">📍 {exam.location}</p>
+                                                    )}
+                                                    <div className="mt-2">
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="text-xs text-gray-500">Preparation:</span>
+                                                            <div className="flex-1 bg-gray-200 rounded-full h-1.5 max-w-20">
+                                                                <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${exam.preparation_percentage}%` }}></div>
+                                                            </div>
+                                                            <span className="text-xs text-gray-600">{Math.round(exam.preparation_percentage)}%</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right ml-3">
+                                                    <p className="text-sm font-medium text-blue-600">{formatDate(exam.exam_date)}</p>
+                                                    <p className="text-xs text-gray-500">{exam.days_until_exam} days left</p>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
+                                    <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <p className="text-sm text-gray-500">No upcoming exams or quizzes in the next 14 days.</p>
+                                </div>
+                            )}
+                        </CardBody>
+                    </Card>
+                </div>
+
+                {/* Upcoming Study Plan Deadlines */}
+                <div className="flex flex-col">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Study Plan Deadlines</h2>
+                    <Card className="flex-1">
+                        <CardBody className="flex flex-col min-h-[200px]">
+                            {upcoming_study_plan_deadlines?.length > 0 ? (
+                                <div className="space-y-3">
+                                    {upcoming_study_plan_deadlines.map((deadline) => (
+                                        <Link to={`/study-plans`} key={deadline.id} className="block p-3 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200">
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center space-x-2 mb-1">
+                                                        <p className="text-sm font-medium text-gray-900">{deadline.title}</p>
+                                                        <span className={`px-2 py-0.5 text-xs rounded-full ${
+                                                            deadline.status === 'active' ? 'bg-green-100 text-green-800' :
+                                                            deadline.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                                            'bg-gray-100 text-gray-800'
+                                                        }`}>
+                                                            {deadline.status}
+                                                        </span>
+                                                    </div>
+                                                    <div className="mt-2">
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="text-xs text-gray-500">Progress:</span>
+                                                            <div className="flex-1 bg-gray-200 rounded-full h-1.5 max-w-20">
+                                                                <div className="bg-green-600 h-1.5 rounded-full" style={{ width: `${deadline.progress_percentage}%` }}></div>
+                                                            </div>
+                                                            <span className="text-xs text-gray-600">{Math.round(deadline.progress_percentage)}%</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right ml-3">
+                                                    <p className="text-sm font-medium text-green-600">{formatDate(deadline.end_date)}</p>
+                                                    <p className="text-xs text-gray-500">{deadline.days_until_deadline} days left</p>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
+                                    <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                    </svg>
+                                    <p className="text-sm text-gray-500">No upcoming study plan deadlines in the next 14 days.</p>
+                                </div>
+                            )}
+                        </CardBody>
+                    </Card>
+                </div>
+            </div>
+
             <div className="grid gap-6 lg:grid-cols-2">
                 {/* Upcoming Assignments */}
-                <div>
+                <div className="flex flex-col">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Assignments</h2>
-                    <Card>
-                        <CardBody>
+                    <Card className="flex-1">
+                        <CardBody className="flex flex-col min-h-[200px]">
                             {upcoming_assignments?.length > 0 ? (
                                 <div className="space-y-3">
                                     {upcoming_assignments.map((assignment) => (
@@ -217,7 +327,7 @@ const DashboardPage = () => {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-center py-8">
+                                <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
                                     <p className="text-sm text-gray-500">No upcoming assignments in the next 14 days. Good job!</p>
                                 </div>
                             )}
@@ -226,10 +336,10 @@ const DashboardPage = () => {
                 </div>
 
                 {/* Recent Courses */}
-                <div>
+                <div className="flex flex-col">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Courses</h2>
-                    <Card>
-                        <CardBody>
+                    <Card className="flex-1">
+                        <CardBody className="flex flex-col min-h-[200px]">
                             {recent_courses?.length > 0 ? (
                                 <div className="space-y-3">
                                     {recent_courses.map((course) => (
@@ -249,7 +359,7 @@ const DashboardPage = () => {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-center py-8">
+                                <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
                                     <p className="text-sm text-gray-500">No recent courses. Add one to get started!</p>
                                 </div>
                             )}

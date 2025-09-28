@@ -22,7 +22,6 @@ const StudyPlanCard = ({
     className = '',
 }) => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
 
     // Format date for display
     const formatDate = (dateString) => {
@@ -43,21 +42,6 @@ const StudyPlanCard = ({
         return statusMap[status] || 'bg-gray-100 text-gray-800';
     };
 
-    // Handle progress update
-    const handleProgressUpdate = async (increment) => {
-        if (isUpdatingProgress) return;
-        
-        setIsUpdatingProgress(true);
-        const newProgress = Math.min(100, Math.max(0, studyPlan.progress_percentage + increment));
-        
-        try {
-            await onUpdateProgress(studyPlan.id, newProgress);
-        } catch (error) {
-            console.error('Failed to update progress:', error);
-        } finally {
-            setIsUpdatingProgress(false);
-        }
-    };
 
     // Handle delete confirmation
     const handleDelete = async () => {
@@ -72,7 +56,7 @@ const StudyPlanCard = ({
     // Dropdown menu items
     const dropdownItems = [
         { 
-            label: 'View Details', 
+            label: 'View', 
             onClick: () => onView(studyPlan.id), 
             icon: (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,35 +207,7 @@ const StudyPlanCard = ({
                     <div className="mb-4">
                         <div className="flex items-center justify-between text-sm mb-2">
                             <span className="text-gray-500">Progress</span>
-                            <div className="flex items-center gap-2">
-                                <span className="font-medium">{Math.round(studyPlan.progress_percentage)}%</span>
-                                {studyPlan.status === 'active' && (
-                                    <div className="flex gap-1">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleProgressUpdate(-10);
-                                            }}
-                                            disabled={isUpdatingProgress || studyPlan.progress_percentage <= 0}
-                                            className="w-5 h-5 text-xs bg-gray-200 hover:bg-gray-300 rounded text-gray-600 disabled:opacity-50"
-                                            title="Decrease 10%"
-                                        >
-                                            -
-                                        </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleProgressUpdate(10);
-                                            }}
-                                            disabled={isUpdatingProgress || studyPlan.progress_percentage >= 100}
-                                            className="w-5 h-5 text-xs bg-green-200 hover:bg-green-300 rounded text-green-600 disabled:opacity-50"
-                                            title="Increase 10%"
-                                        >
-                                            +
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                            <span className="font-medium">{Math.round(studyPlan.progress_percentage)}%</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                             <div

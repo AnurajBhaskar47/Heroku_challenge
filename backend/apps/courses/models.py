@@ -566,3 +566,183 @@ class CourseTopicItem(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.course.name})"
+
+
+class Exam(models.Model):
+    """
+    Model representing course exams with timeline and syllabus coverage.
+    """
+    
+    EXAM_TYPE_CHOICES = [
+        ('midterm', 'Midterm'),
+        ('final', 'Final Exam'),
+        ('quiz', 'Quiz'),
+        ('test', 'Test'),
+        ('practical', 'Practical Exam'),
+        ('oral', 'Oral Exam'),
+        ('other', 'Other'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('upcoming', 'Upcoming'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    # Relationships
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='exams',
+        help_text="Course this exam belongs to"
+    )
+    
+    # Basic Information
+    name = models.CharField(
+        max_length=200,
+        help_text="Exam name or title"
+    )
+    
+    exam_type = models.CharField(
+        max_length=20,
+        choices=EXAM_TYPE_CHOICES,
+        default='test',
+        help_text="Type of exam"
+    )
+    
+    description = models.TextField(
+        blank=True,
+        help_text="Exam description or additional notes"
+    )
+    
+    # Scheduling
+    exam_date = models.DateTimeField(
+        help_text="Date and time of the exam"
+    )
+    
+    duration_minutes = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Exam duration in minutes"
+    )
+    
+    location = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Exam location or room"
+    )
+    
+    # Syllabus Coverage
+    syllabus_coverage = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of topics/chapters covered in this exam with weightage"
+    )
+    
+    total_weightage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=100.00,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Total weightage percentage in final grade"
+    )
+    
+    # Status and Results
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='upcoming',
+        help_text="Current status of the exam"
+    )
+    
+    grade = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Grade received (percentage)"
+    )
+    
+    # Study Planning
+    preparation_status = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Study preparation progress for each topic"
+    )
+    
+    study_plan_generated = models.BooleanField(
+        default=False,
+        help_text="Whether AI study plan has been generated for this exam"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'courses_exam'
+        verbose_name = 'Exam'
+        verbose_name_plural = 'Exams'
+        ordering = ['exam_date']
+        unique_together = ['course', 'name', 'exam_date']
+    
+    def __str__(self):
+        return f"{self.name} - {self.course.name}"
+    
+    @property
+    def is_upcoming(self):
+        """Check if the exam is upcoming."""
+        return self.exam_date > timezone.now() and self.status == 'upcoming'
+    
+    @property
+    def days_until_exam(self):
+        """Return the number of days until the exam."""
+        if self.exam_date:
+            delta = self.exam_date.date() - timezone.now().date()
+            return delta.days
+        return None
+    
+    @property
+    def time_until_exam(self):
+        """Return time until exam as a human-readable string."""
+        if not self.exam_date:
+            return None
+        
+        delta = self.exam_date - timezone.now()
+        
+        if delta.total_seconds() < 0:
+            return "Past"
+        
+        days = delta.days
+        hours, remainder = divmod(delta.seconds, 3600)
+        minutes, _ = divmod(remainder, 60)
+        
+        if days > 0:
+            return f"{days} days, {hours} hours"
+        elif hours > 0:
+            return f"{hours} hours, {minutes} minutes"
+        else:
+            return f"{minutes} minutes"
+    
+    @property
+    def preparation_percentage(self):
+        """Calculate preparation progress percentage."""
+        if not self.preparation_status:
+            return 0
+        
+        total_topics = len(self.syllabus_coverage)
+        if total_topics == 0:
+            return 0
+        
+        completed_topics = sum(1 for topic in self.syllabus_coverage 
+                             if self.preparation_status.get(topic.get('topic', ''), False))
+        
+        return round((completed_topics / total_topics) * 100, 2)
+    
+    def save(self, *args, **kwargs):
+        """Override save to automatically update status based on date."""
+        if self.exam_date and self.exam_date < timezone.now() and self.status == 'upcoming':
+            self.status = 'completed'
+        super().save(*args, **kwargs)

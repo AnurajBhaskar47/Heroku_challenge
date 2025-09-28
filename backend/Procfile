@@ -1,2 +1,2 @@
 release: python manage.py migrate
-web: python manage.py collectstatic --noinput && gunicorn study_bud.wsgi --log-file -
+web: python manage.py collectstatic --noinput && gunicorn study_bud.wsgi --log-file - --workers 2 --timeout 30

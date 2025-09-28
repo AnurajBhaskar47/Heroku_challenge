@@ -6,6 +6,7 @@ import Select from '../components/common/Select';
 import TextArea from '../components/common/TextArea';
 import { resourcesService } from '../services/resources';
 import { coursesService } from '../services/courses';
+import { chatService } from '../services/chat';
 
 const AIAssistantPage = () => {
     const [searchParams] = useSearchParams();
@@ -13,14 +14,18 @@ const AIAssistantPage = () => {
         {
             id: 'welcome',
             type: 'assistant',
-            content: 'Hello! I\'m your AI study assistant. I can help you with questions about your uploaded resources, create personalized study plans, explain concepts, and provide study strategies. What would you like help with today?',
+            content: 'Hello! I\'m your AI study assistant. I can help you with questions about your courses, including:\n\n• 📚 Course resources and materials\n• 📝 Quiz files and exam preparation\n• 📋 Assignment tracking and deadlines\n• 🎯 Course topics and progress\n• 📅 Upcoming exams and schedules\n• 💡 Study strategies and explanations\n\nSelect a course for personalized context, or ask general study questions. What would you like help with today?',
             timestamp: new Date().toISOString()
         }
     ]);
     const [inputMessage, setInputMessage] = useState('');
     const [selectedCourse, setSelectedCourse] = useState('');
+    const [selectedExam, setSelectedExam] = useState('');
+    const [selectedTopic, setSelectedTopic] = useState('');
     const [contextType, setContextType] = useState('general');
     const [courses, setCourses] = useState([]);
+    const [exams, setExams] = useState([]);
+    const [topics, setTopics] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const messagesEndRef = useRef(null);
@@ -54,6 +59,44 @@ const AIAssistantPage = () => {
         }
     };
 
+    const loadExams = async (courseId) => {
+        try {
+            const data = await coursesService.getExams(courseId);
+            setExams(data.results || data);
+        } catch (err) {
+            console.error('Failed to load exams:', err);
+            setExams([]);
+        }
+    };
+
+    const loadTopics = async (courseId) => {
+        try {
+            const data = await coursesService.getCourseTopicItems(courseId);
+            setTopics(data.results || data);
+        } catch (err) {
+            console.error('Failed to load topics:', err);
+            setTopics([]);
+        }
+    };
+
+    const handleCourseChange = async (courseId) => {
+        setSelectedCourse(courseId);
+        setSelectedExam(''); // Reset exam selection
+        setSelectedTopic(''); // Reset topic selection
+        
+        if (courseId) {
+            // Load exams and topics for the selected course
+            await Promise.all([
+                loadExams(courseId),
+                loadTopics(courseId)
+            ]);
+        } else {
+            // Clear exams and topics if no course selected
+            setExams([]);
+            setTopics([]);
+        }
+    };
+
     const handleSendMessage = async (e) => {
         e.preventDefault();
         
@@ -74,29 +117,57 @@ const AIAssistantPage = () => {
         setError(null);
 
         try {
-            // Prepare request based on context type
-            const request = {
-                question: currentMessage,
-                context_type: contextType
+            // Prepare additional context based on selections
+            const additionalContext = {
+                context_type: contextType,
+                source: 'ai_assistant_page'
             };
 
-            if (selectedCourse) {
-                request.course_id = parseInt(selectedCourse);
+            // Add specific exam context if selected
+            if (selectedExam) {
+                const selectedExamData = exams.find(exam => exam.id === parseInt(selectedExam));
+                if (selectedExamData) {
+                    additionalContext.selected_exam = {
+                        id: selectedExamData.id,
+                        name: selectedExamData.name,
+                        type: selectedExamData.exam_type,
+                        date: selectedExamData.exam_date,
+                        syllabus_coverage: selectedExamData.syllabus_coverage
+                    };
+                }
             }
 
-            // Get AI response
-            const response = await resourcesService.askAIQuestion(request);
+            // Add specific topic context if selected
+            if (selectedTopic) {
+                const selectedTopicData = topics.find(topic => topic.id === parseInt(selectedTopic));
+                if (selectedTopicData) {
+                    additionalContext.selected_topic = {
+                        id: selectedTopicData.id,
+                        title: selectedTopicData.title,
+                        description: selectedTopicData.description,
+                        difficulty: selectedTopicData.difficulty,
+                        is_completed: selectedTopicData.is_completed
+                    };
+                }
+            }
+
+            // Use the same chat service as CourseDetailPage ChatBot for full context
+            const response = await chatService.sendMessage(
+                currentMessage,
+                selectedCourse ? parseInt(selectedCourse) : null,
+                additionalContext
+            );
 
             // Create assistant message
             const assistantMessage = {
                 id: (Date.now() + 1).toString(),
                 type: 'assistant',
-                content: response.answer,
+                content: response.response,
                 sources: response.sources || [],
-                confidence: response.confidence,
+                confidence: response.confidence || 0.8,
                 timestamp: new Date().toISOString(),
                 course_id: response.course_id,
-                rag_context_used: response.rag_context_used
+                rag_context_used: response.rag_enhanced || response.course_context_used
             };
 
             setMessages(prev => [...prev, assistantMessage]);
@@ -124,7 +195,7 @@ const AIAssistantPage = () => {
             {
                 id: 'welcome',
                 type: 'assistant',
-                content: 'Hello! I\'m your AI study assistant. I can help you with questions about your uploaded resources, create personalized study plans, explain concepts, and provide study strategies. What would you like help with today?',
+                content: 'Hello! I\'m your AI study assistant. I can help you with questions about your courses, including:\n\n• 📚 Course resources and materials\n• 📝 Quiz files and exam preparation\n• 📋 Assignment tracking and deadlines\n• 🎯 Course topics and progress\n• 📅 Upcoming exams and schedules\n• 💡 Study strategies and explanations\n\nSelect a course for personalized context, or ask general study questions. What would you like help with today?',
                 timestamp: new Date().toISOString()
             }
         ]);
@@ -248,7 +319,7 @@ const AIAssistantPage = () => {
                                 AI Study Assistant
                             </h1>
                             <p className="text-gray-600 mt-2">
-                                Get personalized help with your studies using AI-powered insights from your uploaded resources
+                                Get personalized help with your studies using AI-powered insights from your courses, resources, assignments, and exam schedules
                             </p>
                         </div>
                         
@@ -268,23 +339,93 @@ const AIAssistantPage = () => {
 
                 {/* Controls */}
                 <Card className="mb-6 p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Select
-                            label="Course Context (Optional)"
-                            value={selectedCourse}
-                            onChange={(e) => setSelectedCourse(e.target.value)}
-                            options={[
-                                { value: '', label: 'No specific course' },
-                                ...courses.map(course => ({ value: course.id, label: course.name }))
-                            ]}
-                        />
-                        
-                        <Select
-                            label="Question Type"
-                            value={contextType}
-                            onChange={(e) => setContextType(e.target.value)}
-                            options={contextTypeOptions}
-                        />
+                    <div className="space-y-4">
+                        {/* Course and Question Type Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Select
+                                label="Course Context (Optional)"
+                                value={selectedCourse}
+                                onChange={(e) => handleCourseChange(e.target.value)}
+                                options={[
+                                    { value: '', label: 'No specific course' },
+                                    ...courses.map(course => ({ value: course.id, label: course.name }))
+                                ]}
+                            />
+                            
+                            <Select
+                                label="Question Type"
+                                value={contextType}
+                                onChange={(e) => setContextType(e.target.value)}
+                                options={contextTypeOptions}
+                            />
+                        </div>
+
+                        {/* Exam and Topic Selection Row - Show when course is selected OR show disabled preview */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-200">
+                            {!selectedCourse && (
+                                <div className="col-span-full">
+                                    <p className="text-sm text-gray-600 mb-2">
+                                        Select a course above to unlock exam and topic-specific questions
+                                    </p>
+                                </div>
+                            )}
+                            <Select
+                                label="Specific Exam (Optional)"
+                                value={selectedExam}
+                                onChange={(e) => setSelectedExam(e.target.value)}
+                                disabled={!selectedCourse}
+                                options={selectedCourse ? [
+                                    { value: '', label: 'No specific exam' },
+                                    ...exams.map(exam => ({ 
+                                        value: exam.id, 
+                                        label: `${exam.name} (${exam.exam_type}) - ${new Date(exam.exam_date).toLocaleDateString()}`
+                                    }))
+                                ] : [
+                                    { value: '', label: 'Select a course first to see exams' }
+                                ]}
+                            />
+                            
+                            <Select
+                                label="Specific Topic (Optional)"
+                                value={selectedTopic}
+                                onChange={(e) => setSelectedTopic(e.target.value)}
+                                disabled={!selectedCourse}
+                                options={selectedCourse ? [
+                                    { value: '', label: 'No specific topic' },
+                                    ...topics.map(topic => ({ 
+                                        value: topic.id, 
+                                        label: `${topic.title} (${topic.difficulty})${topic.is_completed ? ' ✓' : ''}`
+                                    }))
+                                ] : [
+                                    { value: '', label: 'Select a course first to see topics' }
+                                ]}
+                            />
+                        </div>
+
+                        {/* Context Info */}
+                        {(selectedCourse || selectedExam || selectedTopic) && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                                <div className="flex items-start">
+                                    <svg className="w-5 h-5 text-blue-400 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                    </svg>
+                                    <div className="text-sm text-blue-800">
+                                        <p className="font-medium mb-1">Context Selected:</p>
+                                        <ul className="space-y-1">
+                                            {selectedCourse && (
+                                                <li>• Course: {courses.find(c => c.id === parseInt(selectedCourse))?.name}</li>
+                                            )}
+                                            {selectedExam && (
+                                                <li>• Exam: {exams.find(e => e.id === parseInt(selectedExam))?.name}</li>
+                                            )}
+                                            {selectedTopic && (
+                                                <li>• Topic: {topics.find(t => t.id === parseInt(selectedTopic))?.title}</li>
+                                            )}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </Card>
 
@@ -342,7 +483,7 @@ const AIAssistantPage = () => {
                                 <TextArea
                                     value={inputMessage}
                                     onChange={(e) => setInputMessage(e.target.value)}
-                                    placeholder="Ask me anything about your studies, uploaded resources, or request help with concepts..."
+                                    placeholder="Ask me about your courses, assignments, exams, resources, or any study-related questions..."
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                                     rows={3}
                                     disabled={loading}

@@ -85,12 +85,7 @@ const ResourceUploadModal = ({ isOpen, onClose, courses, onUploadSuccess, preSel
     };
 
     const resourceTypeOptions = [
-        { value: 'pdf', label: 'PDF Document' },
-        { value: 'docx', label: 'Word Document' },
-        { value: 'txt', label: 'Text File' },
-        { value: 'pptx', label: 'PowerPoint' },
-        { value: 'url', label: 'Web Link' },
-        { value: 'video', label: 'Video' }
+        { value: 'pdf', label: 'PDF Document' }
     ];
 
     const difficultyOptions = [
@@ -128,10 +123,13 @@ const ResourceUploadModal = ({ isOpen, onClose, courses, onUploadSuccess, preSel
                     </label>
                     <input
                         type="file"
-                        accept=".pdf,.docx,.doc,.txt,.pptx"
+                        accept=".pdf"
                         onChange={handleFileSelect}
                         className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                        Supported format: PDF only
+                    </p>
                 </div>
 
                 {/* Title */}

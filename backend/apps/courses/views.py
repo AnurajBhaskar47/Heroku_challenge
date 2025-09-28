@@ -22,7 +22,7 @@ except ImportError as e:
     CourseRAGExtension = None
     RAG_AVAILABLE = False
 
-from .models import Course, Assignment, CourseQuiz, CourseAssignmentFile, CourseTopic, CourseTopicItem
+from .models import Course, Assignment, CourseQuiz, CourseAssignmentFile, CourseTopic, CourseTopicItem, Exam
 from .serializers import (
     CourseSerializer,
     CourseDetailSerializer,
@@ -34,7 +34,9 @@ from .serializers import (
     CourseQuizSerializer,
     CourseAssignmentFileSerializer,
     CourseTopicSerializer,
-    CourseTopicItemSerializer
+    CourseTopicItemSerializer,
+    ExamSerializer,
+    ExamCreateSerializer
 )
 
 
@@ -713,3 +715,146 @@ class CourseTopicItemViewSet(viewsets.ModelViewSet):
                 continue
         
         return Response({'message': 'Topics reordered successfully'})
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List course exams",
+        description="Retrieve exams for a specific course."
+    ),
+    create=extend_schema(
+        summary="Create course exam",
+        description="Create a new exam for the specified course."
+    ),
+    retrieve=extend_schema(
+        summary="Get exam details",
+        description="Retrieve detailed information about a specific exam."
+    ),
+    update=extend_schema(
+        summary="Update exam",
+        description="Update an exam's information."
+    ),
+    destroy=extend_schema(
+        summary="Delete exam",
+        description="Delete an exam."
+    )
+)
+class ExamViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing course exams.
+    """
+    serializer_class = ExamSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        """Filter exams by course and user."""
+        course_id = self.kwargs.get('course_pk')
+        if course_id:
+            return Exam.objects.filter(
+                course_id=course_id,
+                course__user=self.request.user
+            ).select_related('course')
+        return Exam.objects.none()
+    
+    def get_course(self):
+        """Get the course for this exam."""
+        course_id = self.kwargs.get('course_pk')
+        return get_object_or_404(
+            Course,
+            id=course_id,
+            user=self.request.user
+        )
+    
+    def get_serializer_class(self):
+        """Return appropriate serializer class."""
+        if self.action == 'create':
+            return ExamCreateSerializer
+        return ExamSerializer
+    
+    def get_serializer_context(self):
+        """Add course to serializer context."""
+        context = super().get_serializer_context()
+        if hasattr(self, 'get_course'):
+            try:
+                context['course'] = self.get_course()
+            except:
+                pass
+        return context
+    
+    def perform_create(self, serializer):
+        """Create exam for the specified course."""
+        course = self.get_course()
+        serializer.save(course=course)
+    
+    @action(detail=True, methods=['post'])
+    def update_preparation(self, request, course_pk=None, pk=None):
+        """Update exam preparation status for specific topics."""
+        exam = self.get_object()
+        preparation_updates = request.data.get('preparation_status', {})
+        
+        if not isinstance(preparation_updates, dict):
+            return Response(
+                {'error': 'preparation_status must be an object'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update preparation status
+        current_status = exam.preparation_status or {}
+        current_status.update(preparation_updates)
+        exam.preparation_status = current_status
+        exam.save()
+        
+        serializer = self.get_serializer(exam)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def generate_study_plan(self, request, course_pk=None, pk=None):
+        """Generate AI study plan for this exam."""
+        exam = self.get_object()
+        
+        # Mark that study plan generation was requested
+        exam.study_plan_generated = True
+        exam.save()
+        
+        # Here you would integrate with your AI study plan generation
+        # For now, return a success message
+        return Response({
+            'message': 'Study plan generation initiated',
+            'exam_id': exam.id,
+            'exam_name': exam.name
+        })
+    
+    @action(detail=False, methods=['get'])
+    def upcoming(self, request, course_pk=None):
+        """Get upcoming exams for the course."""
+        queryset = self.get_queryset().filter(
+            exam_date__gt=timezone.now(),
+            status='upcoming'
+        ).order_by('exam_date')
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def calendar_events(self, request, course_pk=None):
+        """Get exam events formatted for calendar display."""
+        queryset = self.get_queryset()
+        
+        events = []
+        for exam in queryset:
+            events.append({
+                'id': f'exam_{exam.id}',
+                'title': exam.name,
+                'start': exam.exam_date.isoformat(),
+                'end': (exam.exam_date + timezone.timedelta(
+                    minutes=exam.duration_minutes or 120
+                )).isoformat(),
+                'type': 'exam',
+                'exam_type': exam.exam_type,
+                'status': exam.status,
+                'location': exam.location,
+                'description': exam.description,
+                'preparation_percentage': exam.preparation_percentage
+            })
+        
+        return Response(events)

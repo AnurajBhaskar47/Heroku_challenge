@@ -12,7 +12,7 @@ from django.conf import settings
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 
-from apps.courses.models import Course
+from apps.courses.models import Course, Exam
 from utils.ai_client import AIClient
 from utils.enhanced_ai_client import EnhancedAIClient
 from utils.security_guards import ChatSecurityGuard, RateLimiter
@@ -407,11 +407,51 @@ class AIAssistantViewSet(viewsets.GenericViewSet):
                             topic_items_count += course_topic.topic_items.count()
                             completed_topics += course_topic.topic_items.filter(is_completed=True).count()
                         
+                        # Get exam data (scheduled assessments)
+                        exams_count = course.exams.count()
+                        upcoming_exams = course.exams.filter(
+                            exam_date__gt=timezone.now(),
+                            status='upcoming'
+                        ).count()
+                        completed_exams = course.exams.filter(status='completed').count()
+                        
+                        # Separate quizzes from other exams for clarity
+                        upcoming_quizzes = course.exams.filter(
+                            exam_date__gt=timezone.now(),
+                            status='upcoming',
+                            exam_type='quiz'
+                        ).count()
+                        
+                        # Get quiz files count (uploaded study materials)
+                        quiz_files_count = course.quiz_files.count()
+                        
+                        # Get upcoming exam details for context
+                        upcoming_exam_details = []
+                        for exam in course.exams.filter(
+                            exam_date__gt=timezone.now(),
+                            status='upcoming'
+                        ).order_by('exam_date')[:5]:  # Get next 5 upcoming exams
+                            exam_info = {
+                                'name': exam.name,
+                                'type': exam.exam_type,
+                                'date': exam.exam_date.isoformat(),
+                                'days_until': exam.days_until_exam,
+                                'syllabus_coverage': exam.syllabus_coverage,
+                                'preparation_percentage': exam.preparation_percentage
+                            }
+                            upcoming_exam_details.append(exam_info)
+                        
                         user_context['course_stats'] = ChatSecurityGuard.sanitize_context({
                             'assignments_total': assignments_count,
                             'assignments_completed': completed_assignments,
                             'topics_total': topic_items_count,
-                            'topics_completed': completed_topics
+                            'topics_completed': completed_topics,
+                            'scheduled_exams_total': exams_count,
+                            'scheduled_exams_upcoming': upcoming_exams,
+                            'scheduled_exams_completed': completed_exams,
+                            'scheduled_quizzes_upcoming': upcoming_quizzes,
+                            'quiz_files_uploaded': quiz_files_count,
+                            'upcoming_scheduled_assessments': upcoming_exam_details
                         })
                         
                     except Exception as stats_error:

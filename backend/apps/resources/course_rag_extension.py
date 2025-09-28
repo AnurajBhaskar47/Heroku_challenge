@@ -667,6 +667,108 @@ class CourseRAGExtension:
 
 
 # Add the extension methods to the main RAGPipeline class
+    @staticmethod
+    def process_course_exam(exam):
+        """
+        Process a course exam through the RAG pipeline.
+        
+        Args:
+            exam: Exam instance to process
+        """
+        from .rag_models import Document, DocumentChunk, KnowledgeNode
+        from .rag_pipeline import EmbeddingGenerator, get_openai_client
+        
+        try:
+            # Create document entry for the exam
+            document = Document.objects.create(
+                title=f"Exam: {exam.name}",
+                content=f"Exam: {exam.name}\nType: {exam.get_exam_type_display()}\nDate: {exam.exam_date}\nLocation: {exam.location or 'Not specified'}\nDescription: {exam.description or 'No description'}\nSyllabus Coverage: {exam.syllabus_coverage}",
+                document_type='exam',
+                source_url=f"/courses/{exam.course.id}/exams/{exam.id}/",
+                metadata={
+                    'course_id': exam.course.id,
+                    'course_name': exam.course.name,
+                    'exam_id': exam.id,
+                    'exam_type': exam.exam_type,
+                    'exam_date': exam.exam_date.isoformat(),
+                    'total_weightage': float(exam.total_weightage),
+                    'syllabus_coverage': exam.syllabus_coverage,
+                    'status': exam.status
+                }
+            )
+            
+            # Create main exam chunk
+            exam_content = f"""
+            Exam Information:
+            - Name: {exam.name}
+            - Type: {exam.get_exam_type_display()}
+            - Date: {exam.exam_date.strftime('%Y-%m-%d %H:%M')}
+            - Duration: {exam.duration_minutes or 'Not specified'} minutes
+            - Location: {exam.location or 'Not specified'}
+            - Total Weightage: {exam.total_weightage}%
+            - Status: {exam.get_status_display()}
+            
+            Description: {exam.description or 'No description provided'}
+            
+            Syllabus Coverage:
+            """
+            
+            # Add syllabus coverage details
+            if exam.syllabus_coverage:
+                for item in exam.syllabus_coverage:
+                    topic = item.get('topic', 'Unknown Topic')
+                    weightage = item.get('weightage', 0)
+                    exam_content += f"- {topic}: {weightage}%\n"
+            else:
+                exam_content += "- No specific syllabus coverage defined\n"
+            
+            # Generate embedding for the exam content
+            embedding = EmbeddingGenerator.generate_embedding(exam_content)
+            
+            # Create document chunk
+            chunk = DocumentChunk.objects.create(
+                document=document,
+                chunk_index=0,
+                content=exam_content,
+                chunk_type='exam_info',
+                word_count=len(exam_content.split()),
+                difficulty_level=3,  # Default difficulty
+                topics=[item.get('topic', '') for item in exam.syllabus_coverage] if exam.syllabus_coverage else [],
+                learning_objectives=[f"Prepare for {exam.name}"],
+                estimated_study_time=exam.duration_minutes or 120,
+                embedding=embedding,
+                course=exam.course
+            )
+            
+            # Create knowledge nodes for each syllabus topic
+            if exam.syllabus_coverage:
+                for item in exam.syllabus_coverage:
+                    topic = item.get('topic', '')
+                    weightage = item.get('weightage', 0)
+                    
+                    if topic:
+                        KnowledgeNode.objects.create(
+                            topic=topic,
+                            description=f"Topic covered in {exam.name} with {weightage}% weightage",
+                            confidence_score=0.9,
+                            metadata={
+                                'exam_id': exam.id,
+                                'exam_name': exam.name,
+                                'weightage': weightage,
+                                'exam_type': exam.exam_type,
+                                'exam_date': exam.exam_date.isoformat()
+                            },
+                            related_chunks=[chunk.id],
+                            course=exam.course
+                        )
+            
+            logger.info(f"Successfully processed exam {exam.id} through RAG pipeline")
+            
+        except Exception as e:
+            logger.error(f"Error processing exam {exam.id} through RAG: {str(e)}")
+            raise
+
+
 def extend_rag_pipeline():
     """Add course processing methods to RAGPipeline class."""
     from .rag_pipeline import RAGPipeline
@@ -675,6 +777,7 @@ def extend_rag_pipeline():
     RAGPipeline.process_course_quiz = CourseRAGExtension.process_course_quiz
     RAGPipeline.process_course_assignment = CourseRAGExtension.process_course_assignment
     RAGPipeline.process_course_topics = CourseRAGExtension.process_course_topics
+    RAGPipeline.process_course_exam = CourseRAGExtension.process_course_exam
 
 # Auto-extend when this module is imported
 extend_rag_pipeline()

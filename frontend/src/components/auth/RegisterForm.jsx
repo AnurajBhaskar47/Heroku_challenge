@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import Button from '../common/Button.jsx';
 import Input from '../common/Input.jsx';
+import StudyOwlIcon from '../common/StudyOwlIcon.jsx';
 import Select from '../common/Select.jsx';
 import { getErrorMessage } from '../../services/api.js';
 import { ACADEMIC_YEARS, COMMON_MAJORS, TIMEZONES, VALIDATION } from '../../utils/constants.js';
@@ -118,8 +119,8 @@ const RegisterForm = ({ onSuccess }) => {
         <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8">
                 <div>
-                    <div className="mx-auto h-12 w-12 bg-primary-600 rounded-xl flex items-center justify-center">
-                        <span className="text-white font-bold text-xl">S</span>
+                    <div className="mx-auto h-12 w-12 rounded-xl flex items-center justify-center">
+                        <StudyOwlIcon className="w-12 h-12" />
                     </div>
                     <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
                         Join Study Bud

@@ -60,21 +60,7 @@ const ResourceEditModal = ({ isOpen, onClose, resource, courses, onUpdateSuccess
     };
 
     const resourceTypeOptions = [
-        { value: 'pdf', label: 'PDF Document' },
-        { value: 'docx', label: 'Word Document' },
-        { value: 'txt', label: 'Text File' },
-        { value: 'pptx', label: 'PowerPoint' },
-        { value: 'article', label: 'Article' },
-        { value: 'video', label: 'Video' },
-        { value: 'book', label: 'Book' },
-        { value: 'course', label: 'Online Course' },
-        { value: 'tutorial', label: 'Tutorial' },
-        { value: 'documentation', label: 'Documentation' },
-        { value: 'paper', label: 'Research Paper' },
-        { value: 'quiz', label: 'Quiz/Practice' },
-        { value: 'tool', label: 'Tool/Software' },
-        { value: 'url', label: 'Web Link' },
-        { value: 'other', label: 'Other' }
+        { value: 'pdf', label: 'PDF Document' }
     ];
 
     const difficultyOptions = [

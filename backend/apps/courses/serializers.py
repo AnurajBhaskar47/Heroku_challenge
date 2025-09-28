@@ -4,7 +4,7 @@ Serializers for the courses app.
 
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Course, Assignment, CourseQuiz, CourseAssignmentFile, CourseTopic, CourseTopicItem
+from .models import Course, Assignment, CourseQuiz, CourseAssignmentFile, CourseTopic, CourseTopicItem, Exam
 
 
 class AssignmentSerializer(serializers.ModelSerializer):
@@ -315,3 +315,89 @@ class CourseDetailWithFilesSerializer(CourseDetailSerializer):
         fields = CourseDetailSerializer.Meta.fields + [
             'quiz_files', 'assignment_files', 'course_topics'
         ]
+
+
+class ExamSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Exam model.
+    """
+    
+    # Read-only computed fields
+    is_upcoming = serializers.BooleanField(read_only=True)
+    days_until_exam = serializers.IntegerField(read_only=True)
+    time_until_exam = serializers.CharField(read_only=True)
+    preparation_percentage = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
+    exam_type_display = serializers.CharField(source='get_exam_type_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    class Meta:
+        model = Exam
+        fields = [
+            'id', 'name', 'exam_type', 'exam_type_display', 'description',
+            'exam_date', 'duration_minutes', 'location', 'syllabus_coverage',
+            'total_weightage', 'status', 'status_display', 'grade',
+            'preparation_status', 'study_plan_generated', 'is_upcoming',
+            'days_until_exam', 'time_until_exam', 'preparation_percentage',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+    
+    def validate_exam_date(self, value):
+        """Validate that exam date is not in the past for new exams."""
+        if not self.instance and value < timezone.now():
+            raise serializers.ValidationError("Exam date cannot be in the past.")
+        return value
+    
+    def validate_syllabus_coverage(self, value):
+        """Validate syllabus coverage format."""
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Syllabus coverage must be a list.")
+        
+        total_weightage = 0
+        for item in value:
+            if not isinstance(item, dict):
+                raise serializers.ValidationError("Each syllabus item must be an object.")
+            
+            if 'topic' not in item or 'weightage' not in item:
+                raise serializers.ValidationError("Each syllabus item must have 'topic' and 'weightage' fields.")
+            
+            try:
+                weightage = float(item['weightage'])
+                if weightage < 0 or weightage > 100:
+                    raise serializers.ValidationError("Weightage must be between 0 and 100.")
+                total_weightage += weightage
+            except (ValueError, TypeError):
+                raise serializers.ValidationError("Weightage must be a valid number.")
+        
+        if total_weightage > 100:
+            raise serializers.ValidationError("Total weightage cannot exceed 100%.")
+        
+        return value
+
+
+class ExamCreateSerializer(ExamSerializer):
+    """
+    Serializer for creating new exams with additional validation.
+    """
+    
+    def validate(self, attrs):
+        """Additional validation for exam creation."""
+        attrs = super().validate(attrs)
+        
+        # Ensure exam name is unique for the course
+        course = self.context.get('course')
+        if course:
+            exam_name = attrs.get('name')
+            exam_date = attrs.get('exam_date')
+            
+            existing_exam = course.exams.filter(
+                name__iexact=exam_name,
+                exam_date__date=exam_date.date()
+            ).first()
+            
+            if existing_exam and existing_exam != self.instance:
+                raise serializers.ValidationError({
+                    'name': 'An exam with this name already exists on the same date.'
+                })
+        
+        return attrs

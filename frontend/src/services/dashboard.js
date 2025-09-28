@@ -29,9 +29,36 @@ import api from './api.js';
  */
 
 /**
+ * @typedef {Object} UpcomingExam
+ * @property {number} id
+ * @property {string} name
+ * @property {string} exam_date
+ * @property {string} exam_type
+ * @property {string} exam_type_display
+ * @property {string} course_name
+ * @property {number} course_id
+ * @property {number} days_until_exam
+ * @property {string} location
+ * @property {number} duration_minutes
+ * @property {number} preparation_percentage
+ */
+
+/**
+ * @typedef {Object} UpcomingStudyPlanDeadline
+ * @property {number} id
+ * @property {string} title
+ * @property {string} end_date
+ * @property {string} status
+ * @property {number} progress_percentage
+ * @property {number} days_until_deadline
+ */
+
+/**
  * @typedef {Object} DashboardData
  * @property {DashboardStats} stats
  * @property {UpcomingAssignment[]} upcoming_assignments
+ * @property {UpcomingExam[]} upcoming_exams
+ * @property {UpcomingStudyPlanDeadline[]} upcoming_study_plan_deadlines
  * @property {RecentCourse[]} recent_courses
  */
 

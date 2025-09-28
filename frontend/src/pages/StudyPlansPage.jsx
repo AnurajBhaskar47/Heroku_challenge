@@ -1,17 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Button from '../components/common/Button.jsx';
 import { EmptyStudyPlansState } from '../components/common/EmptyState.jsx';
 import Loader from '../components/common/Loader.jsx';
 import StudyPlanCard from '../components/study-plans/StudyPlanCard.jsx';
 import StudyPlanFormModal from '../components/study-plans/StudyPlanFormModal.jsx';
 import StudyPlanDetailModal from '../components/study-plans/StudyPlanDetailModal.jsx';
+import AIStudyPlannerModal from '../components/resources/AIStudyPlannerModal.jsx';
 import useStudyPlans from '../hooks/useStudyPlans.jsx';
 import { plansService } from '../services/plans.js';
+import { resourcesService } from '../services/resources.js';
+import { coursesService } from '../services/courses.js';
 
 /**
  * Study Plans page component
  */
 const StudyPlansPage = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    
     const {
         studyPlans,
         loading,
@@ -28,15 +35,68 @@ const StudyPlansPage = () => {
 
     const [showFormModal, setShowFormModal] = useState(false);
     const [showDetailModal, setShowDetailModal] = useState(false);
+    const [aiPlannerModalOpen, setAiPlannerModalOpen] = useState(false);
     const [selectedStudyPlan, setSelectedStudyPlan] = useState(null);
     const [detailStudyPlanId, setDetailStudyPlanId] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
     const [filter, setFilter] = useState('all'); // all, active, completed, draft, overdue
+    const [courses, setCourses] = useState([]);
+
+    // Load courses for AI Study Planner
+    const loadCourses = useCallback(async () => {
+        try {
+            const data = await coursesService.getCourses();
+            setCourses(data.results || data);
+        } catch (err) {
+            console.error('Failed to load courses:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadCourses();
+    }, [loadCourses]);
 
     // Handle creating a new study plan
     const handleCreatePlan = () => {
         setSelectedStudyPlan(null);
         setShowFormModal(true);
+    };
+
+    // Generate AI study plan
+    const handleGenerateAIStudyPlan = async (planRequest) => {
+        try {
+            setFormLoading(true);
+            const response = await resourcesService.generateStudyPlan(planRequest);
+            
+            if (response.success && response.study_plan) {
+                // Create a new study plan from the AI response
+                const studyPlanData = {
+                    title: response.study_plan.title || 'AI Generated Study Plan',
+                    description: response.study_plan.description || 'Generated using AI with course context',
+                    plan_data: response.study_plan,
+                    status: 'draft'
+                };
+                
+                const result = await createStudyPlan(studyPlanData);
+                
+                if (result.success) {
+                    setAiPlannerModalOpen(false);
+                    loadStudyPlans(); // Refresh the study plans list
+                    
+                    // Show success message
+                    setError(null);
+                } else {
+                    throw new Error(result.error || 'Failed to create study plan');
+                }
+            } else {
+                throw new Error(response.error || 'Failed to generate study plan');
+            }
+        } catch (err) {
+            setError(err.message || 'Failed to generate AI study plan');
+            throw err; // Re-throw to let the modal handle it
+        } finally {
+            setFormLoading(false);
+        }
     };
 
     // Handle editing a study plan
@@ -208,19 +268,45 @@ const StudyPlansPage = () => {
     if (studyPlans.length === 0) {
         return (
             <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <h1 className="text-2xl font-bold text-gray-900">Study Plans</h1>
-                    <Button onClick={handleCreatePlan}>Create Study Plan</Button>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Study Plans</h1>
+                        <p className="text-gray-600">
+                            Create and manage your personalized study plans
+                        </p>
+                    </div>
+                    <div className="flex gap-3">
+                        <Button
+                            onClick={() => setAiPlannerModalOpen(true)}
+                            variant="outline"
+                            className="flex items-center gap-2"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                            AI Study Planner
+                        </Button>
+                        <Button onClick={handleCreatePlan}>Create Study Plan</Button>
+                    </div>
                 </div>
                 <EmptyStudyPlansState onCreatePlan={handleCreatePlan} />
                 
-                {/* Form Modal */}
+                {/* Modals */}
                 <StudyPlanFormModal
                     isOpen={showFormModal}
                     onClose={handleCloseFormModal}
                     onSubmit={handleFormSubmit}
                     studyPlan={selectedStudyPlan}
                     isLoading={formLoading}
+                />
+
+                <AIStudyPlannerModal
+                    isOpen={aiPlannerModalOpen}
+                    onClose={() => setAiPlannerModalOpen(false)}
+                    courses={courses}
+                    onGenerateSuccess={handleGenerateAIStudyPlan}
+                    loading={formLoading}
                 />
             </div>
         );
@@ -236,7 +322,20 @@ const StudyPlansPage = () => {
                         Create and manage your personalized study plans
                     </p>
                 </div>
-                <Button onClick={handleCreatePlan}>Create Study Plan</Button>
+                <div className="flex gap-3">
+                    <Button
+                        onClick={() => setAiPlannerModalOpen(true)}
+                        variant="outline"
+                        className="flex items-center gap-2"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        AI Study Planner
+                    </Button>
+                    <Button onClick={handleCreatePlan}>Create Study Plan</Button>
+                </div>
             </div>
 
             {/* Statistics */}
@@ -354,6 +453,14 @@ const StudyPlansPage = () => {
                 onSetDraft={handleSetDraft}
                 onSetActive={handleSetActive}
                 onTopicUpdate={loadStudyPlans}
+            />
+
+            <AIStudyPlannerModal
+                isOpen={aiPlannerModalOpen}
+                onClose={() => setAiPlannerModalOpen(false)}
+                courses={courses}
+                onGenerateSuccess={handleGenerateAIStudyPlan}
+                loading={formLoading}
             />
         </div>
     );

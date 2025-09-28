@@ -11,6 +11,7 @@ import CourseDetailPage from './pages/CourseDetailPage.jsx';
 import StudyPlansPage from './pages/StudyPlansPage.jsx';
 import AIAssistantPage from './pages/AIAssistantPage.jsx';
 import ResourcesPage from './pages/ResourcesPage.jsx';
+import CalendarPage from './pages/CalendarPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 
 // Error boundary component
@@ -198,6 +199,16 @@ function App() {
                                     <ProtectedRoute>
                                         <Layout>
                                             <ResourcesPage />
+                                        </Layout>
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/calendar"
+                                element={
+                                    <ProtectedRoute>
+                                        <Layout>
+                                            <CalendarPage />
                                         </Layout>
                                     </ProtectedRoute>
                                 }

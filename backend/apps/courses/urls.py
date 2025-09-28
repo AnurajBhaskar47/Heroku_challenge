@@ -13,7 +13,8 @@ from .views import (
     CourseQuizViewSet,
     CourseAssignmentFileViewSet,
     CourseTopicViewSet,
-    CourseTopicItemViewSet
+    CourseTopicItemViewSet,
+    ExamViewSet
 )
 
 # Create main router
@@ -34,6 +35,8 @@ courses_router.register(
     r'topics', CourseTopicViewSet, basename='course-topics')
 courses_router.register(
     r'topic-items', CourseTopicItemViewSet, basename='course-topic-items')
+courses_router.register(
+    r'exams', ExamViewSet, basename='course-exams')
 
 urlpatterns = [
     # Include main router URLs

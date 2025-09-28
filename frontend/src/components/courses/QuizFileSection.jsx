@@ -206,10 +206,8 @@ const QuizFileSection = ({ courseId }) => {
                                             )}
                                             <div className="flex items-center space-x-4 text-xs text-gray-500">
                                                 <span className="flex items-center">
-                                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 15 15">
-                                                        <path d="M3.5 8H3V7H3.5C3.77614 7 4 7.22386 4 7.5C4 7.77614 3.77614 8 3.5 8Z"/>
-                                                        <path d="M7 10V7H7.5C7.77614 7 8 7.22386 8 7.5V9.5C8 9.77614 7.77614 10 7.5 10H7Z"/>
-                                                        <path fillRule="evenodd" clipRule="evenodd" d="M1 1.5C1 0.671573 1.67157 0 2.5 0H10.7071L14 3.29289V13.5C14 14.3284 13.3284 15 12.5 15H2.5C1.67157 15 1 14.3284 1 13.5V1.5ZM3.5 6H2V11H3V9H3.5C4.32843 9 5 8.32843 5 7.5C5 6.67157 4.32843 6 3.5 6ZM7.5 6H6V11H7.5C8.32843 11 9 10.3284 9 9.5V7.5C9 6.67157 8.32843 6 7.5 6ZM10 11V6H13V7H11V8H12V9H11V11H10Z"/>
+                                                    <svg className="w-3 h-3 mr-1 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
                                                     </svg>
                                                     {quiz.file_type?.toUpperCase() || 'File'}
                                                 </span>
@@ -289,13 +287,13 @@ const QuizFileSection = ({ courseId }) => {
                         </label>
                         <input
                             type="file"
-                            accept=".pdf,.doc,.docx,.txt"
+                            accept=".pdf"
                             onChange={handleFileChange}
                             required
                             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                            Supported formats: PDF, DOC, DOCX, TXT
+                            Supported format: PDF only
                         </p>
                     </div>
 

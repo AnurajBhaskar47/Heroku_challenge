@@ -47,11 +47,16 @@ const StudyPlanFormModal = ({
                     start_date: studyPlan.start_date || '',
                     end_date: studyPlan.end_date || '',
                     status: studyPlan.status || 'draft',
-                    plan_data: studyPlan.plan_data || {
-                        topics: [],
-                        milestones: [],
-                        estimated_hours: 0,
-                        difficulty_level: 3,
+                    plan_data: {
+                        topics: studyPlan.plan_data?.topics || [],
+                        milestones: studyPlan.plan_data?.milestones || [],
+                        estimated_hours: studyPlan.plan_data?.estimated_hours || 0,
+                        difficulty_level: studyPlan.plan_data?.difficulty_level || 3,
+                        // Preserve any additional AI-generated data
+                        ...studyPlan.plan_data,
+                        // But ensure the required fields are always present
+                        topics: studyPlan.plan_data?.topics || [],
+                        milestones: studyPlan.plan_data?.milestones || [],
                     },
                 });
             } else {
@@ -126,7 +131,7 @@ const StudyPlanFormModal = ({
             ...prev,
             plan_data: {
                 ...prev.plan_data,
-                topics: [...prev.plan_data.topics, newTopic],
+                topics: [...(prev.plan_data.topics || []), newTopic],
             },
         }));
     };
@@ -137,7 +142,7 @@ const StudyPlanFormModal = ({
             ...prev,
             plan_data: {
                 ...prev.plan_data,
-                topics: prev.plan_data.topics.filter(t => t.id !== topicId),
+                topics: (prev.plan_data.topics || []).filter(t => t.id !== topicId),
             },
         }));
     };
@@ -148,7 +153,7 @@ const StudyPlanFormModal = ({
             ...prev,
             plan_data: {
                 ...prev.plan_data,
-                topics: prev.plan_data.topics.map(topic =>
+                topics: (prev.plan_data.topics || []).map(topic =>
                     topic.id === topicId ? { ...topic, [field]: value } : topic
                 ),
             },
@@ -169,7 +174,7 @@ const StudyPlanFormModal = ({
             ...prev,
             plan_data: {
                 ...prev.plan_data,
-                milestones: [...prev.plan_data.milestones, newMilestone],
+                milestones: [...(prev.plan_data.milestones || []), newMilestone],
             },
         }));
     };
@@ -180,7 +185,7 @@ const StudyPlanFormModal = ({
             ...prev,
             plan_data: {
                 ...prev.plan_data,
-                milestones: prev.plan_data.milestones.filter(m => m.id !== milestoneId),
+                milestones: (prev.plan_data.milestones || []).filter(m => m.id !== milestoneId),
             },
         }));
     };
@@ -191,7 +196,7 @@ const StudyPlanFormModal = ({
             ...prev,
             plan_data: {
                 ...prev.plan_data,
-                milestones: prev.plan_data.milestones.map(milestone =>
+                milestones: (prev.plan_data.milestones || []).map(milestone =>
                     milestone.id === milestoneId ? { ...milestone, [field]: value } : milestone
                 ),
             },
@@ -235,7 +240,7 @@ const StudyPlanFormModal = ({
         }
 
         // Ensure all topics have valid estimated_hours before submission
-        const processedTopics = formData.plan_data.topics.map(topic => ({
+        const processedTopics = (formData.plan_data.topics || []).map(topic => ({
             ...topic,
             estimated_hours: topic.estimated_hours === '' || topic.estimated_hours === null || topic.estimated_hours === undefined || parseFloat(topic.estimated_hours) < 0.5 
                 ? 0.5 
@@ -365,7 +370,7 @@ const StudyPlanFormModal = ({
                     </div>
 
                     <div className="space-y-3">
-                        {formData.plan_data.topics.map((topic, index) => (
+                        {(formData.plan_data.topics || []).map((topic, index) => (
                             <div key={topic.id} className="p-4 border rounded-lg">
                                 <div className="flex justify-between items-start mb-3">
                                     <h4 className="font-medium text-sm">{topic.name || topic.title || `Topic ${index + 1}`}</h4>
@@ -436,7 +441,7 @@ const StudyPlanFormModal = ({
                             </div>
                         ))}
                         
-                        {formData.plan_data.topics.length === 0 && (
+                        {(formData.plan_data.topics || []).length === 0 && (
                             <div className="text-center py-8 text-gray-500">
                                 <p>No topics added yet. Click "Add Topic" to get started.</p>
                             </div>
@@ -459,7 +464,7 @@ const StudyPlanFormModal = ({
                     </div>
 
                     <div className="space-y-3">
-                        {formData.plan_data.milestones.map((milestone, index) => (
+                        {(formData.plan_data.milestones || []).map((milestone, index) => (
                             <div key={milestone.id} className="p-4 border rounded-lg">
                                 <div className="flex justify-between items-start mb-3">
                                     <h4 className="font-medium text-sm">{milestone.name || milestone.title || `Milestone ${index + 1}`}</h4>

@@ -337,3 +337,34 @@ class StudyPlanViewSet(viewsets.ModelViewSet):
         new_plan = StudyPlan.objects.create(**new_plan_data)
         serializer = self.get_serializer(new_plan)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        summary="Get study plan calendar events",
+        description="Get study plan deadlines formatted for calendar display.",
+        responses={200: "list of calendar events"}
+    )
+    @action(detail=False, methods=['get'], url_path='calendar-events')
+    def calendar_events(self, request):
+        """Get study plan deadlines formatted for calendar display."""
+        queryset = self.get_queryset().filter(
+            status__in=['active', 'in_progress'],
+            end_date__isnull=False
+        )
+        
+        events = []
+        for plan in queryset:
+            events.append({
+                'id': f'study_plan_{plan.id}',
+                'title': f"{plan.title}",
+                'start': plan.end_date.isoformat(),
+                'end': plan.end_date.isoformat(),
+                'type': 'study_plan_deadline',
+                'status': plan.status,
+                'progress_percentage': float(plan.progress_percentage),
+                'description': plan.description,
+                'course_name': plan.course.name if plan.course else None,
+                'course_id': plan.course.id if plan.course else None,
+                'days_remaining': plan.days_remaining
+            })
+        
+        return Response(events)

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import Button from './Button.jsx';
+import StudyOwlIcon from './StudyOwlIcon.jsx';
 
 /**
  * Main Layout component with sidebar and header
@@ -60,6 +61,15 @@ const Layout = ({ children }) => {
             ),
         },
         {
+            name: 'Calendar',
+            href: '/calendar',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+            ),
+        },
+        {
             name: 'Settings',
             href: '/settings',
             icon: (
@@ -87,8 +97,8 @@ const Layout = ({ children }) => {
                         {/* Logo */}
                         <div className="flex items-center flex-shrink-0 px-4">
                             <Link to="/dashboard" className="flex items-center">
-                                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                                    <span className="text-white font-bold text-lg">S</span>
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                                    <StudyOwlIcon className="w-8 h-8" />
                                 </div>
                                 <span className="ml-2 text-xl font-semibold text-gray-900">
                                     Study Bud
@@ -177,8 +187,8 @@ const Layout = ({ children }) => {
                             {/* Mobile logo */}
                             <div className="flex items-center flex-shrink-0 px-4">
                                 <Link to="/dashboard" className="flex items-center">
-                                    <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                                        <span className="text-white font-bold text-lg">S</span>
+                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                                        <StudyOwlIcon className="w-8 h-8" />
                                     </div>
                                     <span className="ml-2 text-xl font-semibold text-gray-900">
                                         Study Bud
