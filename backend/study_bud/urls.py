@@ -51,8 +51,7 @@ if settings.DEBUG:
 
 # Serve React app for all non-API routes (production and development)
 # This should be last to allow all API routes to be matched first
-# Exclude admin, API, health, and media from React app routing
-# Note: /assets/ is handled by WhiteNoise for static files
+# Exclude admin, API, health, static files, and media from React app routing
 urlpatterns += [
-    re_path(r'^(?!api/)(?!admin/)(?!health/)(?!media/).*$', ReactAppView.as_view()),
+    re_path(r'^(?!api/)(?!admin/)(?!health/)(?!static/)(?!media/).*$', ReactAppView.as_view()),
 ]

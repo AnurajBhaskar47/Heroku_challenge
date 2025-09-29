@@ -69,8 +69,7 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 STATICFILES_DIRS = []
 
 # Ensure static files are served correctly
-# Use /assets/ to match frontend build output
-STATIC_URL = '/assets/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Redis Cache (optional - uncomment if using Redis)
