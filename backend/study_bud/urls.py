@@ -10,6 +10,7 @@ from django.views.generic import TemplateView
 from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from apps.accounts.views import HealthCheckView
 
 
 class ReactAppView(TemplateView):
@@ -39,8 +40,8 @@ urlpatterns = [
          name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 
-    # Health check endpoint
-    path('', include('apps.accounts.urls')),  # Includes health check at root
+    # Health check endpoint (direct import to avoid router conflicts)
+    path('health/', HealthCheckView.as_view(), name='health-check'),
 ]
 
 # Serve media files in development

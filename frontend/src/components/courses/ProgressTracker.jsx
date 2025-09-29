@@ -17,7 +17,6 @@ const ProgressTracker = ({ courseId, onDataUpdate }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const loadProgressData = async () => {
-        console.log('🔄 ProgressTracker: loadProgressData called for courseId:', courseId);
         try {
             setLoading(true);
             const [assignmentsData, topicItemsData, courseTopicsData] = await Promise.all([
@@ -25,8 +24,6 @@ const ProgressTracker = ({ courseId, onDataUpdate }) => {
                 coursesService.getCourseTopicItems(courseId),
                 coursesService.getCourseTopics(courseId)
             ]);
-
-            console.log('📊 ProgressTracker: Data loaded - assignments:', assignmentsData?.results?.length || assignmentsData?.length, 'topics:', topicItemsData?.results?.length || topicItemsData?.length);
             
             setAssignments(assignmentsData.results || assignmentsData || []);
             setTopicItems(topicItemsData.results || topicItemsData || []);
@@ -46,18 +43,13 @@ const ProgressTracker = ({ courseId, onDataUpdate }) => {
 
     // Expose refresh function to parent component
     useEffect(() => {
-        console.log('🔗 ProgressTracker: Setting up refresh function, onDataUpdate:', onDataUpdate);
-        
         // Create a wrapper function to ensure we pass a function, not a promise
         const refreshFunction = () => {
-            console.log('🔄 ProgressTracker: Refresh function called');
             return loadProgressData();
         };
         
-        console.log('🔗 ProgressTracker: refreshFunction type:', typeof refreshFunction, refreshFunction);
         if (onDataUpdate) {
             onDataUpdate(refreshFunction);
-            console.log('✅ ProgressTracker: Refresh function exposed to parent');
         }
     }, [onDataUpdate]);
 
@@ -71,12 +63,6 @@ const ProgressTracker = ({ courseId, onDataUpdate }) => {
     const totalItems = totalAssignments + totalTopics;
     const completedItems = completedAssignments + completedTopics;
     const progressPercentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-    
-    console.log('📈 ProgressTracker: Progress calculated -', {
-        completedTopics, totalTopics, 
-        completedAssignments, totalAssignments,
-        progressPercentage
-    });
 
 
     const handleDeleteSyllabus = async () => {

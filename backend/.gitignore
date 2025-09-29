@@ -18,7 +18,6 @@ env/
 ENV/
 
 # Static files
-staticfiles/
 /static/
 
 # IDE

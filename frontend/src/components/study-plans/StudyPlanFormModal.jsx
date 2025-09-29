@@ -48,15 +48,13 @@ const StudyPlanFormModal = ({
                     end_date: studyPlan.end_date || '',
                     status: studyPlan.status || 'draft',
                     plan_data: {
+                        // Preserve any additional AI-generated data first
+                        ...studyPlan.plan_data,
+                        // Then ensure the required fields are always present (will override if needed)
                         topics: studyPlan.plan_data?.topics || [],
                         milestones: studyPlan.plan_data?.milestones || [],
                         estimated_hours: studyPlan.plan_data?.estimated_hours || 0,
                         difficulty_level: studyPlan.plan_data?.difficulty_level || 3,
-                        // Preserve any additional AI-generated data
-                        ...studyPlan.plan_data,
-                        // But ensure the required fields are always present
-                        topics: studyPlan.plan_data?.topics || [],
-                        milestones: studyPlan.plan_data?.milestones || [],
                     },
                 });
             } else {

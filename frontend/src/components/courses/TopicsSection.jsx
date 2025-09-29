@@ -91,16 +91,12 @@ const TopicsSection = ({ courseId, onTopicUpdate }) => {
             setTopicItemsLoading(true);
             setTopicItemsError(null);
             const data = await coursesService.getCourseTopicItems(courseId);
-            console.log('Raw API response for topic items:', data, 'Type:', typeof data);
-            
             // Ensure data is always an array
             if (Array.isArray(data)) {
                 setTopicItems(data);
-                console.log('Set topic items (direct array):', data.length, 'items');
             } else if (data && Array.isArray(data.results)) {
                 // Handle paginated response
                 setTopicItems(data.results);
-                console.log('Set topic items (paginated):', data.results.length, 'items');
             } else {
                 console.warn('API returned non-array data:', data);
                 setTopicItems([]);
@@ -210,7 +206,6 @@ const TopicsSection = ({ courseId, onTopicUpdate }) => {
             );
             
             // Notify parent component of data update (for ProgressTracker)
-            console.log('🔔 TopicsSection: Notifying parent of topic update, onTopicUpdate:', onTopicUpdate);
             if (onTopicUpdate) {
                 onTopicUpdate();
             }
