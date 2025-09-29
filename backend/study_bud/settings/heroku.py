@@ -64,9 +64,14 @@ X_FRAME_OPTIONS = 'DENY'
 # WhiteNoise configuration for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Override STATICFILES_DIRS for Heroku deployment
+# Static files configuration for Heroku deployment
 # Since we copy frontend build files to staticfiles/ during deployment
 STATICFILES_DIRS = []
+
+# Ensure static files are served correctly
+# Use /assets/ to match frontend build output
+STATIC_URL = '/assets/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Redis Cache (optional - uncomment if using Redis)
 """
