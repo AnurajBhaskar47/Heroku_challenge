@@ -25,7 +25,7 @@ Study Bud uses **4 coordinated AI agents** working together to deliver personali
 
 1. **Document Processing Agent** - Intelligent PDF extraction and semantic chunking
 2. **RAG Retrieval Agent** - pgvector-powered semantic search across course materials
-3. **tudy Plan Generator Agent** - Context-aware personalized study plan creation
+3. **Study Plan Generator Agent** - Context-aware personalized study plan creation
 4. **Conversational AI Agent** - Real-time Q&A with source attribution
 
 ## Multi-Agent Architecture
@@ -207,63 +207,7 @@ class StudyPlanGenerator:
 - **Source Attribution**: Always cites original materials
 - **Confidence Scoring**: Indicates reliability of AI responses
 
-## Testing
-
-### Run Backend Tests
-```bash
-cd backend
-python manage.py test
-```
-
-### Run Frontend Tests
-```bash
-cd frontend
-npm test
-```
-
-### Test RAG Pipeline
-```bash
-cd backend
-python manage.py test apps.resources.tests.test_rag_pipeline
-```
-
-## Monitoring & Analytics
-
-### Heroku Monitoring
-```bash
-# View logs
-heroku logs --tail -a your-app-name
-
-# Monitor performance
-heroku pg:info -a your-app-name
-
-# Check pgvector status
-heroku pg:psql -a your-app-name -c "SELECT * FROM pg_extension WHERE extname = 'vector';"
-```
-
-### Custom Analytics
-- **RAG Query Tracking**: Monitor query patterns and effectiveness
-- **User Engagement**: Track feature usage and session duration
-- **Performance Metrics**: Monitor response times and error rates
-- **Learning Outcomes**: Measure study plan completion rates
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-### Development Workflow
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes and add tests
-4. Commit your changes: `git commit -m 'Add amazing feature'`
-5. Push to the branch: `git push origin feature/amazing-feature`
-6. Open a Pull Request
-
 ## API Documentation
-
-### Interactive API Docs
-- **Swagger UI**: `https://your-app.herokuapp.com/api/docs/`
-- **ReDoc**: `https://your-app.herokuapp.com/api/redoc/`
 
 ### Key Endpoints
 ```bash
@@ -297,12 +241,6 @@ Content-Type: multipart/form-data
 }
 ```
 
-## Awards & Recognition
-
-- **Heroku "Back to School" AI Challenge Winner** - Student Success Category
-- **Featured Project** - Heroku AI Showcase
-- **Innovation Award** - Multi-Agent RAG Architecture
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -314,3 +252,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **pgvector team** for the amazing PostgreSQL extension
 - **Django & React communities** for robust frameworks and libraries
 
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
