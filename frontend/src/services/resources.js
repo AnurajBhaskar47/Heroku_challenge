@@ -15,7 +15,7 @@ export const resourcesService = {
      * Get all resources for the authenticated user
      */
     async getResources(params = {}) {
-        const response = await api.get('/resources/', { params });
+        const response = await api.get('/resources', { params });
         return response.data;
     },
 
@@ -32,7 +32,7 @@ export const resourcesService = {
      * @param {FormData} formData - FormData containing file and metadata
      */
     async uploadResource(formData) {
-        const response = await api.post('/resources/', formData, {
+        const response = await api.post('/resources', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
@@ -64,7 +64,7 @@ export const resourcesService = {
             search: query,
             ...filters
         };
-        const response = await api.get('/resources/search/', { params });
+        const response = await api.get('/resources/search', { params });
         return response.data;
     },
 
@@ -72,7 +72,7 @@ export const resourcesService = {
      * Get resource statistics
      */
     async getResourceStats() {
-        const response = await api.get('/resources/stats/');
+        const response = await api.get('/resources/stats');
         return response.data;
     },
 
@@ -86,7 +86,7 @@ export const resourcesService = {
      * @param {Object} request.preferences - Student preferences and constraints
      */
     async generateStudyPlan(request) {
-        const response = await api.post('/resources/generate-study-plan/', request);
+        const response = await api.post('/resources/generate-study-plan', request);
         return response.data;
     },
 
@@ -111,7 +111,7 @@ export const resourcesService = {
      * @param {string} request.learning_style - Learning style preference
      */
     async getResourceRecommendations(request) {
-        const response = await api.post('/resources/recommendations/', request);
+        const response = await api.post('/resources/recommendations', request);
         return response.data;
     },
 
@@ -120,7 +120,7 @@ export const resourcesService = {
      * @param {Object} context - Student learning context
      */
     async submitStudyContext(context) {
-        const response = await api.post('/resources/study-context/', context);
+        const response = await api.post('/resources/study-context', context);
         return response.data;
     },
 
@@ -141,7 +141,7 @@ export const resourcesService = {
      * @param {string} question.context_type - Type of context needed
      */
     async askAIQuestion(question) {
-        const response = await api.post('/resources/ai-question/', question);
+        const response = await api.post('/resources/ai-question', question);
         return response.data;
     },
 
@@ -154,7 +154,7 @@ export const resourcesService = {
      * @param {number} search.top_k - Number of results to return
      */
     async semanticSearch(search) {
-        const response = await api.post('/resources/semantic-search/', search);
+        const response = await api.post('/resources/semantic-search', search);
         return response.data;
     },
 
@@ -175,7 +175,7 @@ export const resourcesService = {
      * @param {string} feedback.comment - Optional feedback comment
      */
     async provideFeedback(feedback) {
-        const response = await api.post('/resources/ai-feedback/', feedback);
+        const response = await api.post('/resources/ai-feedback', feedback);
         return response.data;
     },
 

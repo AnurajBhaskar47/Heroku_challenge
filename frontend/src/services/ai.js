@@ -53,7 +53,7 @@ export const aiService = {
      * @returns {Promise<ExplanationResponse>}
      */
     async getExplanation(data) {
-        const response = await api.post('/ai-assistant/explain/', data);
+        const response = await api.post('/ai-assistant/explain', data);
         return response.data;
     },
 
@@ -63,7 +63,7 @@ export const aiService = {
      * @returns {Promise<StudyPlanResponse>}
      */
     async generateStudyPlan(data) {
-        const response = await api.post('/ai-assistant/enhanced-study-plan/', data);
+        const response = await api.post('/ai-assistant/enhanced-study-plan', data);
         return response.data;
     },
 
@@ -73,7 +73,7 @@ export const aiService = {
      * @returns {Promise<SearchResponse>}
      */
     async semanticSearch(data) {
-        const response = await api.post('/ai-assistant/semantic-search/', data);
+        const response = await api.post('/ai-assistant/semantic-search', data);
         return response.data;
     },
 
@@ -84,7 +84,7 @@ export const aiService = {
      * @returns {Promise<{response: string}>}
      */
     async sendChatMessage(message, context = '') {
-        const response = await api.post('/ai-assistant/chat/', {
+        const response = await api.post('/ai-assistant/chat', {
             message,
             context,
         });

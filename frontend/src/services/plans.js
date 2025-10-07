@@ -19,7 +19,7 @@ export const plansService = {
      * @returns {Promise<StudyPlan[]>}
      */
     async getPlans() {
-        const response = await api.get('/study-plans/');
+        const response = await api.get('/study-plans');
         return response.data;
     },
 
@@ -39,7 +39,7 @@ export const plansService = {
      * @returns {Promise<StudyPlan>}
      */
     async createPlan(planData) {
-        const response = await api.post('/study-plans/', planData);
+        const response = await api.post('/study-plans', planData);
         return response.data;
     },
 
@@ -91,7 +91,7 @@ export const plansService = {
      * @returns {Promise<Object>}
      */
     async getStats() {
-        const response = await api.get('/study-plans/stats/');
+        const response = await api.get('/study-plans/stats');
         return response.data;
     },
 
@@ -100,7 +100,7 @@ export const plansService = {
      * @returns {Promise<StudyPlan[]>}
      */
     async getActivePlans() {
-        const response = await api.get('/study-plans/active/');
+        const response = await api.get('/study-plans/active');
         return response.data;
     },
 
@@ -109,7 +109,7 @@ export const plansService = {
      * @returns {Promise<StudyPlan[]>}
      */
     async getOverduePlans() {
-        const response = await api.get('/study-plans/overdue/');
+        const response = await api.get('/study-plans/overdue');
         return response.data;
     },
 

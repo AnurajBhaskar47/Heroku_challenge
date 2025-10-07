@@ -25,7 +25,7 @@ export const chatService = {
             requestData.course_id = courseId;
         }
 
-        const response = await api.post('/ai-assistant/chat/', requestData);
+        const response = await api.post('/ai-assistant/chat', requestData);
         return response.data;
     },
 

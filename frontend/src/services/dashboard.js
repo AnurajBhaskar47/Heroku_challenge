@@ -68,7 +68,7 @@ export const dashboardService = {
      * @returns {Promise<DashboardData>}
      */
     async getDashboardData() {
-        const response = await api.get('/dashboard/');
+        const response = await api.get('/dashboard');
         return response.data;
     },
 };

@@ -29,7 +29,7 @@ export const authService = {
      * @returns {Promise<AuthResponse>}
      */
     async login(credentials) {
-        const response = await api.post('/auth/login/', credentials);
+        const response = await api.post('/auth/login', credentials);
         return response.data;
     },
 
@@ -44,7 +44,7 @@ export const authService = {
      * @returns {Promise<AuthResponse>}
      */
     async register(userData) {
-        const response = await api.post('/auth/register/', userData);
+        const response = await api.post('/auth/register', userData);
         return response.data;
     },
 
@@ -53,7 +53,7 @@ export const authService = {
      * @returns {Promise<User>}
      */
     async getProfile() {
-        const response = await api.get('/profile/');
+        const response = await api.get('/profile');
         return response.data;
     },
 
@@ -63,7 +63,7 @@ export const authService = {
      * @returns {Promise<User>}
      */
     async updateProfile(userData) {
-        const response = await api.patch('/profile/', userData);
+        const response = await api.patch('/profile', userData);
         return response.data;
     },
 
@@ -75,7 +75,7 @@ export const authService = {
      * @returns {Promise<{success: boolean}>}
      */
     async changePassword(passwords) {
-        const response = await api.post('/profile/change-password/', passwords);
+        const response = await api.post('/profile/change-password', passwords);
         return response.data;
     },
 
@@ -85,7 +85,7 @@ export const authService = {
      * @returns {Promise<{access: string}>}
      */
     async refreshToken(refreshToken) {
-        const response = await api.post('/auth/refresh/', {
+        const response = await api.post('/auth/refresh', {
             refresh: refreshToken,
         });
         return response.data;
@@ -97,7 +97,7 @@ export const authService = {
      */
     async logout() {
         try {
-            await api.post('/auth/logout/');
+            await api.post('/auth/logout');
         } catch (error) {
             // Ignore errors on logout, we'll clear local storage anyway
             console.warn('Logout request failed:', error.message);

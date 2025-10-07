@@ -33,7 +33,7 @@ export const coursesService = {
      * @returns {Promise<Course[]>}
      */
     async getCourses() {
-        const response = await api.get('/courses/');
+        const response = await api.get('/courses');
         return response.data;
     },
 
@@ -43,7 +43,7 @@ export const coursesService = {
      * @returns {Promise<Course>}
      */
     async getCourse(courseId) {
-        const response = await api.get(`/courses/${courseId}/`);
+        const response = await api.get(`/courses/${courseId}`);
         return response.data;
     },
 
@@ -53,7 +53,7 @@ export const coursesService = {
      * @returns {Promise<Course>}
      */
     async createCourse(courseData) {
-        const response = await api.post('/courses/', courseData);
+        const response = await api.post('/courses', courseData);
         return response.data;
     },
 
@@ -64,7 +64,7 @@ export const coursesService = {
      * @returns {Promise<Course>}
      */
     async updateCourse(courseId, courseData) {
-        const response = await api.put(`/courses/${courseId}/`, courseData);
+        const response = await api.put(`/courses/${courseId}`, courseData);
         return response.data;
     },
 
@@ -74,7 +74,7 @@ export const coursesService = {
      * @returns {Promise<void>}
      */
     async deleteCourse(courseId) {
-        await api.delete(`/courses/${courseId}/`);
+        await api.delete(`/courses/${courseId}`);
     },
 
     /**
@@ -83,7 +83,7 @@ export const coursesService = {
      * @returns {Promise<Assignment[]>}
      */
     async getAssignments(courseId) {
-        const response = await api.get(`/courses/${courseId}/assignments/`);
+        const response = await api.get(`/courses/${courseId}/assignments`);
         return response.data;
     },
 
@@ -94,7 +94,7 @@ export const coursesService = {
      * @returns {Promise<Assignment>}
      */
     async createAssignment(courseId, assignmentData) {
-        const response = await api.post(`/courses/${courseId}/assignments/`, assignmentData);
+        const response = await api.post(`/courses/${courseId}/assignments`, assignmentData);
         return response.data;
     },
 
@@ -106,7 +106,7 @@ export const coursesService = {
      * @returns {Promise<Assignment>}
      */
     async updateAssignment(courseId, assignmentId, assignmentData) {
-        const response = await api.put(`/courses/${courseId}/assignments/${assignmentId}/`, assignmentData);
+        const response = await api.put(`/courses/${courseId}/assignments/${assignmentId}`, assignmentData);
         return response.data;
     },
 
@@ -117,7 +117,7 @@ export const coursesService = {
      * @returns {Promise<void>}
      */
     async deleteAssignment(courseId, assignmentId) {
-        await api.delete(`/courses/${courseId}/assignments/${assignmentId}/`);
+        await api.delete(`/courses/${courseId}/assignments/${assignmentId}`);
     },
 
     /**
@@ -127,7 +127,7 @@ export const coursesService = {
      * @returns {Promise<Assignment>}
      */
     async markAssignmentInProgress(courseId, assignmentId) {
-        const response = await api.post(`/courses/${courseId}/assignments/${assignmentId}/mark-in-progress/`);
+        const response = await api.post(`/courses/${courseId}/assignments/${assignmentId}/mark-in-progress`);
         return response.data;
     },
 
@@ -138,7 +138,7 @@ export const coursesService = {
      * @returns {Promise<Assignment>}
      */
     async markAssignmentCompleted(courseId, assignmentId) {
-        const response = await api.post(`/courses/${courseId}/assignments/${assignmentId}/mark-completed/`);
+        const response = await api.post(`/courses/${courseId}/assignments/${assignmentId}/mark-completed`);
         return response.data;
     },
 
@@ -152,7 +152,7 @@ export const coursesService = {
      * @returns {Promise<Object[]>}
      */
     async getQuizFiles(courseId) {
-        const response = await api.get(`/courses/${courseId}/quiz-files/`);
+        const response = await api.get(`/courses/${courseId}/quiz-files`);
         return response.data;
     },
 
@@ -173,7 +173,7 @@ export const coursesService = {
         }
         formData.append('file', quizData.file);
 
-        const response = await api.post(`/courses/${courseId}/quiz-files/`, formData, {
+        const response = await api.post(`/courses/${courseId}/quiz-files`, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
@@ -188,7 +188,7 @@ export const coursesService = {
      * @returns {Promise<void>}
      */
     async deleteQuizFile(courseId, quizId) {
-        await api.delete(`/courses/${courseId}/quiz-files/${quizId}/`);
+        await api.delete(`/courses/${courseId}/quiz-files/${quizId}`);
     },
 
     // ===========================================
@@ -201,7 +201,7 @@ export const coursesService = {
      * @returns {Promise<Object[]>}
      */
     async getAssignmentFiles(courseId) {
-        const response = await api.get(`/courses/${courseId}/assignment-files/`);
+        const response = await api.get(`/courses/${courseId}/assignment-files`);
         return response.data;
     },
 
@@ -222,7 +222,7 @@ export const coursesService = {
         }
         formData.append('file', assignmentData.file);
 
-        const response = await api.post(`/courses/${courseId}/assignment-files/`, formData, {
+        const response = await api.post(`/courses/${courseId}/assignment-files`, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
@@ -237,7 +237,7 @@ export const coursesService = {
      * @returns {Promise<void>}
      */
     async deleteAssignmentFile(courseId, assignmentFileId) {
-        await api.delete(`/courses/${courseId}/assignment-files/${assignmentFileId}/`);
+        await api.delete(`/courses/${courseId}/assignment-files/${assignmentFileId}`);
     },
 
     // ===========================================
@@ -250,7 +250,7 @@ export const coursesService = {
      * @returns {Promise<Object[]>}
      */
     async getCourseTopics(courseId) {
-        const response = await api.get(`/courses/${courseId}/topics/`);
+        const response = await api.get(`/courses/${courseId}/topics`);
         return response.data;
     },
 
@@ -261,7 +261,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async createCourseTopics(courseId, topicData) {
-        const response = await api.post(`/courses/${courseId}/topics/`, topicData, {
+        const response = await api.post(`/courses/${courseId}/topics`, topicData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
@@ -277,7 +277,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async updateCourseTopics(courseId, topicId, topicData) {
-        const response = await api.put(`/courses/${courseId}/topics/${topicId}/`, topicData, {
+        const response = await api.put(`/courses/${courseId}/topics/${topicId}`, topicData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
@@ -292,7 +292,7 @@ export const coursesService = {
      * @returns {Promise<void>}
      */
     async deleteCourseTopics(courseId, topicId) {
-        await api.delete(`/courses/${courseId}/topics/${topicId}/`);
+        await api.delete(`/courses/${courseId}/topics/${topicId}`);
     },
 
     /**
@@ -302,7 +302,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async reprocessCourseTopics(courseId, topicId) {
-        const response = await api.post(`/courses/${courseId}/topics/${topicId}/reprocess/`);
+        const response = await api.post(`/courses/${courseId}/topics/${topicId}/reprocess`);
         return response.data;
     },
 
@@ -313,7 +313,7 @@ export const coursesService = {
      * @returns {Promise<Array>}
      */
     async getCourseTopicItems(courseId) {
-        const response = await api.get(`/courses/${courseId}/topic-items/`);
+        const response = await api.get(`/courses/${courseId}/topic-items`);
         return response.data;
     },
 
@@ -324,7 +324,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async createCourseTopicItem(courseId, topicItemData) {
-        const response = await api.post(`/courses/${courseId}/topic-items/`, topicItemData);
+        const response = await api.post(`/courses/${courseId}/topic-items`, topicItemData);
         return response.data;
     },
 
@@ -336,7 +336,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async updateCourseTopicItem(courseId, topicItemId, topicItemData) {
-        const response = await api.patch(`/courses/${courseId}/topic-items/${topicItemId}/`, topicItemData);
+        const response = await api.patch(`/courses/${courseId}/topic-items/${topicItemId}`, topicItemData);
         return response.data;
     },
 
@@ -347,7 +347,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async deleteCourseTopicItem(courseId, topicItemId) {
-        const response = await api.delete(`/courses/${courseId}/topic-items/${topicItemId}/`);
+        const response = await api.delete(`/courses/${courseId}/topic-items/${topicItemId}`);
         return response.data;
     },
 
@@ -358,7 +358,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async toggleTopicItemCompletion(courseId, topicItemId) {
-        const response = await api.post(`/courses/${courseId}/topic-items/${topicItemId}/toggle-completion/`);
+        const response = await api.post(`/courses/${courseId}/topic-items/${topicItemId}/toggle-completion`);
         return response.data;
     },
 
@@ -369,7 +369,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async reorderTopicItems(courseId, topicOrders) {
-        const response = await api.post(`/courses/${courseId}/topic-items/reorder/`, {
+        const response = await api.post(`/courses/${courseId}/topic-items/reorder`, {
             topic_orders: topicOrders
         });
         return response.data;
@@ -383,7 +383,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async getExams(courseId) {
-        const response = await api.get(`/courses/${courseId}/exams/`);
+        const response = await api.get(`/courses/${courseId}/exams`);
         return response.data;
     },
 
@@ -394,7 +394,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async getExam(courseId, examId) {
-        const response = await api.get(`/courses/${courseId}/exams/${examId}/`);
+        const response = await api.get(`/courses/${courseId}/exams/${examId}`);
         return response.data;
     },
 
@@ -405,7 +405,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async createExam(courseId, examData) {
-        const response = await api.post(`/courses/${courseId}/exams/`, examData);
+        const response = await api.post(`/courses/${courseId}/exams`, examData);
         return response.data;
     },
 
@@ -417,7 +417,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async updateExam(courseId, examId, examData) {
-        const response = await api.put(`/courses/${courseId}/exams/${examId}/`, examData);
+        const response = await api.put(`/courses/${courseId}/exams/${examId}`, examData);
         return response.data;
     },
 
@@ -428,7 +428,7 @@ export const coursesService = {
      * @returns {Promise<void>}
      */
     async deleteExam(courseId, examId) {
-        await api.delete(`/courses/${courseId}/exams/${examId}/`);
+        await api.delete(`/courses/${courseId}/exams/${examId}`);
     },
 
     /**
@@ -437,7 +437,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async getUpcomingExams(courseId) {
-        const response = await api.get(`/courses/${courseId}/exams/upcoming/`);
+        const response = await api.get(`/courses/${courseId}/exams/upcoming`);
         return response.data;
     },
 
@@ -449,7 +449,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async updateExamPreparation(courseId, examId, preparationStatus) {
-        const response = await api.post(`/courses/${courseId}/exams/${examId}/update_preparation/`, {
+        const response = await api.post(`/courses/${courseId}/exams/${examId}/update_preparation`, {
             preparation_status: preparationStatus
         });
         return response.data;
@@ -462,7 +462,7 @@ export const coursesService = {
      * @returns {Promise<Object>}
      */
     async generateExamStudyPlan(courseId, examId) {
-        const response = await api.post(`/courses/${courseId}/exams/${examId}/generate_study_plan/`);
+        const response = await api.post(`/courses/${courseId}/exams/${examId}/generate_study_plan`);
         return response.data;
     },
 
@@ -472,7 +472,7 @@ export const coursesService = {
      * @returns {Promise<Array>}
      */
     async getExamCalendarEvents(courseId) {
-        const response = await api.get(`/courses/${courseId}/exams/calendar_events/`);
+        const response = await api.get(`/courses/${courseId}/exams/calendar_events`);
         return response.data;
     },
 
@@ -548,7 +548,7 @@ export const coursesService = {
      * @returns {Promise<Array>}
      */
     async getStudyPlanCalendarEvents() {
-        const response = await api.get('/study-plans/calendar-events/');
+        const response = await api.get('/study-plans/calendar-events');
         return response.data;
     },
 };
