@@ -1,7 +1,7 @@
 # 🎓 Study Bud: AI-Powered Learning Companion
 
 [![Heroku](https://img.shields.io/badge/Deployed%20on-Heroku-430098?logo=heroku&logoColor=white)](https://study-bud-frontend.herokuapp.com)
-[![Django](https://img.shields.io/badge/Backend-Django%205.2-092E20?logo=django&logoColor=white)](https://djangoproject.com/)
+[![Spring Boot](https://img.shields.io/badge/Backend-Spring%20Boot%203.x-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/Frontend-React%2018-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
 [![pgvector](https://img.shields.io/badge/Vector%20DB-pgvector-336791?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
 [![OpenAI](https://img.shields.io/badge/AI-OpenAI%20GPT--4-412991?logo=openai&logoColor=white)](https://openai.com/)
@@ -12,14 +12,14 @@
 
 **Study Bud** is an intelligent learning companion that revolutionizes how students approach their studies through AI-powered personalization. Built with a sophisticated **multi-agent RAG (Retrieval-Augmented Generation) architecture**, Study Bud analyzes uploaded course materials to create personalized study plans, provides contextual Q&A assistance, and delivers intelligent resource recommendations.
 
-### The Problem We Solve
+### The Problem It Solves
 
 - **Generic study plans** that ignore individual learning styles and course materials
 - **Information overload** from scattered resources without intelligent organization  
 - **Lack of personalized guidance** that adapts to progress and knowledge gaps
 - **Inefficient study strategies** that don't leverage actual course content
 
-### Our Solution
+### My Solution
 
 Study Bud uses **4 coordinated AI agents** working together to deliver personalized learning experiences:
 
@@ -34,11 +34,11 @@ Study Bud uses **4 coordinated AI agents** working together to deliver personali
 
 ## 🔧 Technology Stack
 
-### Backend (Django + PostgreSQL + pgvector)
-- **Framework**: Django 5.2 + Django REST Framework
+### Backend (Spring Boot + PostgreSQL + pgvector)
+- **Framework**: Spring Boot 3.2 + Spring Web + Spring Data JPA + Spring Security
 - **Database**: Heroku PostgreSQL with pgvector extension
 - **AI Integration**: OpenAI GPT-4 + text-embedding-3-small
-- **Document Processing**: PyPDF2, python-docx
+- **Document Processing**: Apache PDFBox/POI
 - **Vector Operations**: pgvector for sub-100ms semantic search
 - **Security**: JWT authentication, rate limiting, input sanitization
 
@@ -57,7 +57,8 @@ Study Bud uses **4 coordinated AI agents** working together to deliver personali
 ## Quick Start
 
 ### Prerequisites
-- Python 3.11+
+- Java 17+
+- Maven 3.9.6+
 - Node.js 18+
 - PostgreSQL with pgvector extension
 - OpenAI API key
@@ -70,47 +71,33 @@ cd Heroku_Challenge
 
 ### 2. Backend Setup
 ```bash
-cd backend
+cd spring-boot-backend
+```
+Check the `.env.example` file for setting up the required env variables.
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+#### Build the backend
+```bash
+mvn clean install
+```
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Set environment variables
-export OPENAI_API_KEY=your_openai_api_key
-export DATABASE_URL=your_postgresql_url_with_pgvector
-
-# Run migrations
-python manage.py migrate
-
-# Create superuser
-python manage.py createsuperuser
-
-# Start development server
-python manage.py runserver
+#### Start development server
+```bash
+mvn spring-boot:run
 ```
 
 ### 3. Frontend Setup
 ```bash
 cd frontend
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
 ```
 
-### 4. Enable pgvector (Local Development)
-```sql
--- Connect to your PostgreSQL database
-CREATE EXTENSION IF NOT EXISTS vector;
+#### Install dependencies
+```bash
+npm install
+```
 
--- Verify installation
-SELECT * FROM pg_extension WHERE extname = 'vector';
+#### Start development server
+```bash
+npm run dev
 ```
 
 ## Features
@@ -139,7 +126,7 @@ SELECT * FROM pg_extension WHERE extname = 'vector';
 - **Resource analytics**: Identify most helpful materials
 - **Progress visualization**: Charts and progress indicators
 
-## RAG Pipeline Deep Dive
+<!-- ## RAG Pipeline Deep Dive
 
 ### Document Processing
 ```python
@@ -177,7 +164,7 @@ class StudyPlanGenerator:
         # 3. Structured JSON response parsing
         # 4. Prerequisite and difficulty sequencing
         return structured_plan
-```
+``` -->
 
 ## Performance Metrics
 
@@ -250,7 +237,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Heroku** for providing excellent pgvector support and deployment platform
 - **OpenAI** for powerful GPT-4 and embedding models
 - **pgvector team** for the amazing PostgreSQL extension
-- **Django & React communities** for robust frameworks and libraries
+- **Spring Boot & React communities** for robust frameworks and libraries
 
 ## Contributing
 
