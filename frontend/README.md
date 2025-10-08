@@ -1,17 +1,17 @@
 # Study Bud - Frontend
 
-A modern React frontend for the Study Bud AI-powered study assistant application.
+A React frontend for the Study Bud AI-powered study assistant application.
 
 ## Features
 
-- 🚀 **Modern Tech Stack**: React 18 + Vite + Tailwind CSS
-- 🔐 **JWT Authentication**: Secure login/register with token refresh
-- 📱 **Responsive Design**: Mobile-first approach with Tailwind CSS
-- 🧭 **React Router v6**: Client-side routing with protected routes
-- 🎯 **Context-based State**: Minimal state management with React Context
-- 🎨 **Component Library**: Reusable UI components with consistent design
-- ♿ **Accessible**: Built with accessibility best practices
-- 🔄 **API Integration**: Axios with interceptors for seamless backend communication
+-  **Modern Tech Stack**: React 18 + Vite + Tailwind CSS
+-  **JWT Authentication**: Secure login/register with token refresh
+-  **Responsive Design**: Mobile-first approach with Tailwind CSS
+-  **React Router v6**: Client-side routing with protected routes
+-  **Context-based State**: Minimal state management with React Context
+-  **Component Library**: Reusable UI components with consistent design
+-  **Accessible**: Built with accessibility best practices
+-  **API Integration**: Axios with interceptors for seamless backend communication
 
 ## Tech Stack
 
@@ -49,7 +49,7 @@ A modern React frontend for the Study Bud AI-powered study assistant application
 4. **Edit `.env` file with your configuration:**
    ```env
    # API Base URL - used for development
-   VITE_API_BASE_URL=http://localhost:8000/api
+   VITE_API_BASE_URL=http://localhost:8080/api
    
    # Environment
    VITE_NODE_ENV=development
@@ -66,7 +66,7 @@ A modern React frontend for the Study Bud AI-powered study assistant application
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `VITE_API_BASE_URL` | Backend API base URL for development | `http://localhost:8000/api` |
+| `VITE_API_BASE_URL` | Backend API base URL for development | `http://localhost:8080/api` |
 | `VITE_NODE_ENV` | Environment mode | `development` |
 
 **Note**: In production, the API base URL automatically uses `window.location.origin + "/api"`
@@ -141,11 +141,11 @@ frontend/
 
 ### Backend Connection
 
-The frontend is designed to work with a Django REST API backend. The API configuration:
+The frontend is designed to work with a Spring Boot REST API backend. The API configuration:
 
-- **Development**: Uses `VITE_API_BASE_URL` from environment (default: `http://localhost:8000/api`)
+- **Development**: Uses `VITE_API_BASE_URL` from environment (default: `http://localhost:8080/api`)
 - **Production**: Automatically uses `${window.location.origin}/api`
-- **Proxy**: Vite dev server proxies `/api` requests to `http://localhost:8000`
+- **Proxy**: Vite dev server proxies `/api` requests to `http://localhost:8080`
 
 ### Authentication Flow
 
@@ -266,23 +266,6 @@ The application is optimized for Heroku deployment:
 - **Mobile**: iOS Safari, Android Chrome
 - **JavaScript**: ES2020+ features (supported by Vite's build target)
 
-## Contributing
-
-### Development Setup
-
-1. Follow the installation steps above
-2. Run `npm run lint` to check code quality
-3. Ensure all pages load without errors
-4. Test authentication flow (will show placeholder messages without backend)
-
-### Code Style
-
-- Use functional components with hooks
-- Follow React best practices
-- Maintain consistent Tailwind CSS usage
-- Add JSDoc comments for complex functions
-- Use meaningful component and variable names
-
 ## Troubleshooting
 
 ### Common Issues
@@ -292,17 +275,10 @@ The application is optimized for Heroku deployment:
 3. **Authentication loops**: Clear localStorage and refresh the page
 4. **Build errors**: Ensure Node.js version >= 18.0.0
 
-### Development Tips
-
-- Use React DevTools for component inspection
-- Check Network tab for API request/response details
-- Use `console.log` statements for debugging (remove before production)
-- Leverage Vite's hot reload for rapid development
-
 ## License
 
 This project is part of the Study Bud application suite.
 
 ## Support
 
-For technical support or questions about the frontend implementation, please refer to the main project documentation or contact the development team.
+For technical support or questions about the frontend implementation, please refer to the main project documentation.
